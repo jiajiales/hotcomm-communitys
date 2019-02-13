@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.NoticeMapper">
+
+    <sql id="Base_Column_List">
+        `id`,
+        `communityid`,
+        `message`,
+        `create_user` createUser,
+        DATE_FORMAT(create_time,'%Y-%m-%d %H:%i') createTime,
+        DATE_FORMAT(update_time,'%Y-%m-%d %H:%i') updateTime,
+        `update_user`  updateUser
+    </sql>
+    
+	<insert id="insert"    parameterType="NoticeDM"  >
+        INSERT INTO hk_notice (
+            `id`,
+            `communityid`,
+            `message`,
+            `create_user`,
+            `create_time`,
+            `update_time`,
+            `update_user`
+        )
+        VALUES(
+            #{id},
+            #{communityid},
+            #{message},
+            #{createUser},
+            NOW(),
+            #{updateTime},
+            #{updateUser}
+        )
+    </insert>
+
+     <delete id="delete" parameterType="java.lang.Integer" >
+        DELETE FROM hk_notice
+        WHERE `id` = #{id}
+    </delete>
+
+    <update id="update" parameterType="NoticeDM" >
+        UPDATE hk_notice
+        SET
+            message = #{message},
+            update_time =  NOW(),
+            update_user = #{updateUser}
+        WHERE `id` = #{id}
+    </update>
+
+
+    <select id="load"  resultType="NoticeDM">
+        SELECT <include refid="Base_Column_List" />
+        FROM hk_notice WHERE 1=1 
+        <if test="id != 0">
+	        	AND `id` = #{id}
+	     </if>
+	     ORDER BY create_time DESC
+	     LIMIT 1
+    </select>
+
+    <select id="pageList" parameterType="java.util.Map" resultType="NoticeDM">
+        SELECT <include refid="Base_Column_List" />
+        FROM hk_notice WHERE 1=1 
+        <if test="startTime !=null and  startTime != '' ">
+			and create_time >=  #{startTime}
+		</if>
+		<if test="endTime !=null and  endTime != '' ">
+			and #{endTime} >= create_time
+		</if>
+    </select> 
+
+</mapper>

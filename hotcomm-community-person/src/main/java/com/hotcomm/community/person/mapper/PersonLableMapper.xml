@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.person.mapper.PersonLableMapper">
+	
+<!-- 	<select id="pagelist" resultType="PersonLableUM"  >
+		SELECT 
+		f1.id,
+		f1.type_code lableType,
+		f2.key_value lableTypeName,
+		f1.name lableName,
+		f1.description lableDesc,
+		f1.alarm_level alarmLevel 
+		FROM  ${tableParams.dynamic_dbname}.hk_person_lable f1 
+		INNER JOIN ${tableParams.base_dbname}.hk_diction f2 ON f1.type_code = f2.`key_name` AND f2.`TYPE`=#{tableParams.dic_type} order by f1.type_code 
+	</select>	 -->
+	
+	<select id="pagelist" resultType="PersonLableUM">
+		SELECT 
+			lable.`id` id,
+			lable.`type_code` typeCode,
+			diction.`key_value` lableTypeName,
+			lable.`name` lableName,
+			lable.`description` lableDesc,
+			lable.`create_time` createTime,
+			sysuser.`real_name` userName,
+			lable.`source_type` sourceType
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_lable lable
+		LEFT JOIN  
+			${tableParams.base_dbname}.`hk_sys_user` sysuser ON sysuser.`user_id` = lable.`create_user`
+		LEFT JOIN 
+			${tableParams.base_dbname}.hk_diction diction ON diction.`key_name`=lable.`type_code` AND diction.`TYPE`=#{tableParams.dic_type}
+		<where>
+			<if test="tableParams.typeCode !=null and tableParams.typeCode !=''">
+				lable.`type_code`=#{tableParams.typeCode}
+			</if>
+			<if test="tableParams.sourceType != null">
+				AND lable.`source_type`=#{tableParams.sourceType}
+			</if>
+			<if test="tableParams.startTime != null and tableParams.startTime !=''">
+				AND lable.`create_time`&gt;=#{tableParams.startTime}
+			</if>
+			<if test="tableParams.endTime !=null and tableParams.endTime !=''">
+				AND DATE_FORMAT(lable.`create_time`,'%Y-%m-%d')&lt;=#{tableParams.endTime}
+			</if>
+			<if test="tableParams.userName">
+				AND sysuser.`real_name` LIKE CONCAT('%',#{tableParams.userName},'%')
+			</if>
+		</where>
+	</select>
+	
+	<select id="PersonLableInfo" resultType="PersonLableUM">
+		SELECT 
+			lable.`id` id,
+			lable.`type_code` typeCode,
+			diction.`key_value` lableTypeName,
+			lable.`name` lableName,
+			lable.`description` lableDesc
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_lable lable
+		LEFT JOIN 
+			${tableParams.base_dbname}.hk_diction diction ON diction.`key_name`=lable.`type_code` AND diction.`TYPE`=#{tableParams.dic_type}
+		WHERE lable.`id`=#{id}
+	</select>
+	
+	<select id="updatePersonLable">
+		UPDATE 
+			${tableParams.dynamic_dbname}.hk_person_lable lable 
+		SET 
+			lable.`type_code`=#{typeCode},
+			lable.`name`=#{name},
+			lable.`description`=#{description}
+		WHERE 
+			lable.`id`=#{id}
+	</select>
+
+    <select id="updatePersonLableId">
+		UPDATE
+			${tableParams.dynamic_dbname}.hk_person_lable lable
+		SET
+			lable.`id`=#{uid}
+		WHERE
+			lable.`id`=#{id}
+	</select>
+
+	<insert id="insertPersonLable">
+		INSERT INTO 
+			${tableParams.dynamic_dbname}.hk_person_lable 
+			(`type_code`,
+			`name`,
+			`description`,
+			`create_time`,
+			`create_user`) 
+		VALUES(#{typeCode},#{name},#{description},NOW(),#{createUser})
+	</insert>
+	<select id="selectLable" resultType="LableTagDM">
+		SELECT 
+			lable.id lableId,
+			lable.`type_code` typeCode,
+			diction.`key_value` typeName,
+			lable.`name` lableName
+		FROM 
+			${tableParams.dynamic_dbname}.`hk_person_lable` lable
+		LEFT JOIN 
+			`hotcomm_community`.`hk_diction` diction ON lable.`type_code`=diction.`key_name` AND diction.`TYPE`='U01'
+		GROUP BY diction.`key_name`,lable.`id`
+	</select>
+
+    <!--检查-->
+    <select id="checkLablePersonRe" resultType="int">
+        SELECT
+            COUNT(p_id)
+        FROM
+            ${tableParams.dynamic_dbname}.hk_person
+        WHERE
+            lable_id=#{id} and  isdelete=0
+    </select>
+</mapper>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<configuration>
+	
+	<property name="log.home.path"  value="D:/logs/hotcomm/community/test"/>
+	<property name="consolePath" value="${log.home.path}/temp" />
+    <property name="errorPath" value="${log.home.path}/error" />
+	
+	<!-- 控制台日志输入 -->
+	<appender name="console_sdtout" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+			</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="console_file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${consolePath}</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${consolePath}.%d{yyyy-MM-dd} -- %i.log</fileNamePattern>
+			<maxFileSize>100MB</maxFileSize>
+			<maxHistory>60</maxHistory>
+			<totalSizeCap>20GB</totalSizeCap>
+		</rollingPolicy>
+		<encoder>
+		<pattern>%d %p [%t] [%F:%L] %msg%n</pattern>
+		</encoder>
+	</appender>
+
+    <!-- 业务ERROR日志 -->
+    <appender name="service_error_file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${errorPath}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${errorPath}.%d{yyyy-MM-dd}-- %i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d %p [%t] [%F:%L] %msg%n</pattern>
+        </encoder>
+    </appender>
+
+
+    <logger level="INFO" additivity="false"  name="errorLogger"  >
+        <appender-ref ref="service_error_file" />
+    </logger>
+
+
+	<root level="info"  >
+		<appender-ref ref="console_sdtout" />
+		<appender-ref ref="console_file" />
+	</root>
+	
+
+</configuration>

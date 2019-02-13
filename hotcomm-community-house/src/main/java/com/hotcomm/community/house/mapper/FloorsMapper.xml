@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.house.mapper.FloorsMapper">
+	<select id="page" resultType="FloorsUM">
+		SELECT
+		f.`id` id,
+		f.`floor_name` floorName,
+		f.`floor_num` floorNum,
+		f.`construct_area` constructArea,
+		f.`use_area` useArea,
+		f.`attribute` attribute,
+		f.`attribute` attributeId,
+		f.`layout_path` layoutPath,
+		f.`create_user` createUser,
+		f.`create_time` createTime,
+		f.`remark` remark,
+		b.`id` buildingId,
+		b.`building_name` buildingName,
+		u.`id` unitId,
+		u.`unit_name` unitName,
+		COUNT(r.`floor_id`) totalRomms
+		FROM
+		${tableParams.dynamic_dbname}.hk_floors f
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_unit u 
+    	ON f.`unit_id` = u.`id` 
+    	AND u.`isdelete` = 0 
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON b.`id` = f.`building_id`
+		AND b.`isdelete` = 0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r
+		ON r.`floor_id` = f.`id`
+		AND r.`isdelete` = 0
+		WHERE f.`isdelete` = 0
+		<if test="params.buildingId!=null and params.buildingId!=''">
+			AND f.`building_id`=#{params.buildingId}
+		</if>
+		<if test="params.attribute!=null and params.attribute!=''">
+			AND f.`attribute`=#{params.attribute}
+		</if>
+		<if test="params.unitId!=null and params.unitId!=''">
+			AND u.`id`=#{params.unitId}
+		</if>
+		<if test="params.content!=null and params.content!=''">
+			AND CONCAT_WS(',',f.`floor_name`,b.`building_name`) LIKE CONCAT('%',#{params.content},'%')
+		</if>
+		GROUP BY f.`id`
+		ORDER BY f.`create_time` DESC
+	</select>
+	<select id="detailsData" resultType="FloorsUM">
+		SELECT
+		f.`id` id,
+		f.`floor_name` floorName,
+		f.`floor_num` floorNum,
+		f.`construct_area`
+		constructArea,
+		f.`use_area` useArea,
+		f.`attribute` attribute,
+		f.`attribute` attributeId,
+		f.`detailed_addr` detailedAddr,
+		f.`rent_or_sale` rentOrSale,
+		f.`rent_or_sale` rentOrSaleId,
+		f.`layout_path` layoutPath,
+		f.`create_user` createUser,
+		f.`create_time`
+		createTime,
+		f.`remark` remark,
+		b.`id` buildingId,
+		b.`building_name` buildingName,
+		u.`id` unitId,
+		u.`unit_name` unitName,
+		COUNT(r.`floor_id`) totalRomms
+		FROM
+		${tableParams.dynamic_dbname}.hk_floors f
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_unit u 
+    	ON f.`unit_id` = u.`id` 
+    	AND u.`isdelete` = 0 
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON b.`id` = f.`building_id`
+		AND b.`isdelete` = 0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r
+		ON r.`floor_id` = f.`id`
+		AND r.`isdelete` = 0
+		WHERE f.`isdelete` = 0
+		AND
+		f.`id` = #{tableParams.id}
+	</select>
+	<select id="getFloorsList" resultType="FloorsListUM">
+		SELECT
+		id,
+		floor_name
+		floorName
+		FROM
+		${tableParams.dynamic_dbname}.hk_floors
+		WHERE unit_id
+		= #{tableParams.unitId}
+		AND isdelete=0
+	</select>
+	<select id="isRoomExist" resultType="java.lang.Integer">
+		SELECT
+		COUNT(r.`floor_id`)
+		FROM
+		${tableParams.dynamic_dbname}.hk_floors f
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_room r
+		ON r.`floor_id` = f.`id`
+		AND
+		r.`isdelete` = 0
+		WHERE f.`isdelete` = 0
+		AND f.`id` = #{tableParams.id}
+	</select>
+	<select id="isFloorExist" resultType="java.lang.Integer">
+		SELECT
+		COUNT(id)
+		FROM
+		${tableParams.dynamic_dbname}.hk_floors
+		WHERE
+		floor_num = #{tableParams.floorNum}
+		AND	unit_id=#{tableParams.unitId}
+		AND building_id = #{tableParams.buildingId}
+		<if test="tableParams.id!=null and tableParams.id!=''">
+			AND id!=#{tableParams.id}
+		</if>
+		AND isdelete=0
+	</select>
+	<insert id="addData">
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_floors (
+		building_id,
+		unit_id,
+		floor_name,
+		floor_num,
+		construct_area,
+		use_area,
+		attribute,
+		detailed_addr,
+		rent_or_sale,
+		layout_path,
+		create_user,
+		create_time,
+		remark )
+		VALUES
+		(#{params.buildingId},#{params.unitId},#{params.floorName},#{params.floorNum},#{params.constructArea},
+		#{params.useArea},#{params.attribute},#{params.detailedAddr},#{params.rentOrSale},
+		#{params.layoutPath},#{params.createUser},NOW(),#{params.remark})
+	</insert>
+	<update id="updateData">
+		UPDATE
+		${tableParams.dynamic_dbname}.hk_floors
+		SET
+		<if test="params.buildingId!=null and params.buildingId!=''">
+			building_id =#{params.buildingId},
+		</if>
+		<if test="params.unitId!=null and params.unitId!=''">
+			unit_id =#{params.unitId},
+		</if>
+		<if test="params.floorName!=null and params.floorName!=''">
+			floor_name =#{params.floorName},
+		</if>
+		<if test="params.floorNum!=null and params.floorNum!=''">
+			floor_num =#{params.floorNum},
+		</if>
+		<if test="params.constructArea!=null and params.constructArea!=''">
+			construct_area =#{params.constructArea},
+		</if>
+		<if test="params.useArea!=null and params.useArea!=''">
+			use_area =#{params.useArea},
+		</if>
+		<if test="params.attribute!=null and params.attribute!=''">
+			attribute =#{params.attribute},
+		</if>
+		<if test="params.detailedAddr!=null and params.detailedAddr!=''">
+			detailed_addr =#{params.detailedAddr},
+		</if>
+		<if test="params.rentOrSale!=null and params.rentOrSale!=''">
+			rent_or_sale =#{params.rentOrSale},
+		</if>
+		<if test="params.layoutPath!=null and params.layoutPath!=''">
+			layout_path=#{params.layoutPath},
+		</if>
+		<if test="params.remark!=null and params.remark!=''">
+			remark=#{params.remark},
+		</if>
+		update_time=NOW()
+		WHERE id=#{params.id}
+	</update>
+	<update id="deleteData">
+		UPDATE
+		${tableParams.dynamic_dbname}.hk_floors
+		SET
+		isdelete=1
+		WHERE id=#{tableParams.id}
+	</update>
+</mapper>

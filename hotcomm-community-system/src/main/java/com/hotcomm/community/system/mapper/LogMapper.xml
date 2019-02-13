@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.LogMapper">
+
+	<sql id="operateLogQuery">
+		<trim prefix="WHERE" prefixOverrides="AND|OR">
+			<if test="params.startTime != null and params.startTime != ''">
+				AND v1.record_time <![CDATA[>=]]> #{params.startTime}
+			</if>
+			<if test="params.endTime != null and params.endTime != ''">
+				AND v1.record_time <![CDATA[<=]]> #{params.endTime}
+			</if>
+			<if test="params.recordUser != null and params.recordUser != ''">
+				AND v1.record_user = #{params.recordUser}
+			</if>
+			<if test="params.cid != null">
+				AND v1.community_id = #{params.cid}
+			</if>
+		</trim>
+	</sql>
+
+	<select id="queryPageOperateLog" resultType="com.hotcomm.community.common.bean.ui.system.OperateLogUM">
+		SELECT v1.id, v1.record_user recordUser, v1.record_event recordEvent, 
+			v1.record_code recordCode, v1.record_time recordTime, v1.record_ip recordIp,
+		(SELECT v2.`NAME` FROM hk_community v2 WHERE v2.id = v1.community_id) communityName
+		FROM hk_operate_log v1
+		<include refid="operateLogQuery"/>
+		ORDER BY v1.record_time DESC
+	    LIMIT #{params.startIndex}, #{params.endIndex}
+	</select>
+
+	<select id="queryPageOperateLogCount" resultType="java.lang.Long">
+		SELECT count(0) FROM hk_operate_log v1
+		<include refid="operateLogQuery"/>
+	</select>
+
+	<sql id="performanceLogQuery">
+		<trim prefix="WHERE" prefixOverrides="AND|OR">
+			<if test="params.startTime != null and params.startTime != ''">
+				AND v1.record_time <![CDATA[>=]]> #{params.startTime}
+			</if>
+			<if test="params.endTime != null and params.endTime != ''">
+				AND v1.record_time <![CDATA[<=]]> #{params.endTime}
+			</if>
+			<if test="params.requestUrl != null and params.requestUrl != ''">
+				AND v1.request_url = #{params.requestUrl}
+			</if>
+			<if test="params.responseStatus != null">
+				AND v1.response_status = #{params.responseStatus}
+			</if>
+		</trim>
+	</sql>
+
+	<select id="queryPagePerformanceLog" resultType="com.hotcomm.community.common.bean.ui.system.PerformanceLogUM">
+		SELECT v1.id, v1.request_ip requestIp, v1.request_params requestParams, 
+			v1.request_url requestUrl, v1.execute_times executeTimes, v1.response_obj responseObj,
+			v1.response_status responseStatus, v1.record_time recordTime
+		FROM hk_performance_log v1
+		<include refid="performanceLogQuery"/>
+		ORDER BY v1.record_time DESC
+	    LIMIT #{params.startIndex}, #{params.endIndex}
+	</select>
+
+	<select id="queryPagePerformanceLogCount" resultType="java.lang.Long">
+		SELECT count(0) FROM hk_performance_log v1
+		<include refid="performanceLogQuery"/>
+	</select>
+
+	<delete id="clearOperateLogBeforeTime" parameterType="java.lang.String">
+		DELETE FROM hk_operate_log WHERE record_time <![CDATA[<]]> #{time}
+	</delete>
+
+	<delete id="clearPerformanceLogBeforeTime" parameterType="java.lang.String">
+		DELETE FROM hk_performance_log WHERE record_time <![CDATA[<]]> #{time}
+	</delete>
+
+</mapper>

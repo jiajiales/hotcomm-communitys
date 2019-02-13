@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.corporation.mapper.CorporationMapper">
+ 
+  <select id="pagelist"  resultType="CorporationUM">
+  SELECT 
+	  a.id,
+	  JSON_EXTRACT(a.floor,'$.building') building,
+	  JSON_EXTRACT(a.floor,'$.roomNum') roomNum,
+	  JSON_EXTRACT(a.floor,'$.layer') layer,
+	  JSON_EXTRACT(a.floor,'$.unit') unit,
+	  d.key_value corType,
+	  a.cor_name  corName,
+	  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+	  a .address ,
+	  c.label_name labelName,
+	  a.dev_count devCount,
+	  a.latitude,
+	  a.longitude,
+	  a.scope,
+	  a.bus_license busLicense
+  FROM ${pa.dynamic_dbname}.`hk_corporation`  a
+  LEFT JOIN ${pa.dynamic_dbname}.`hk_corporation_label` c ON c.id = a.label_id
+  LEFT JOIN hotcomm_community.hk_diction d ON a.cor_type_id = d.id
+  WHERE 1=1
+	  <if test="pa.corTypeId !=null">
+	  	AND a.cor_type_id = #{pa.corTypeId}
+	  </if>
+	    <if test="pa.labelId !=null">
+	  	AND a.label_id = #{pa.labelId}
+	  </if>
+	    <if test="pa.corName !=null  and pa.corName != ''">
+	    AND a.cor_name  LIKE   concat('%',#{pa.corName},'%') 
+	  </if>
+	 <if test="pa.typeId !=null">
+	    AND c.type_id  = #{pa.typeId}
+	  </if>
+  		<if test="pa.startTime !=null and  pa.startTime != '' ">
+			and DATE_FORMAT(a.create_time,'%Y-%m-%d')  >=  #{pa.startTime}
+		</if>
+		<if test="pa.endTime !=null and  pa.endTime != '' ">
+			and #{pa.endTime} >= DATE_FORMAT(a.create_time,'%Y-%m-%d') 
+		</if>
+		ORDER BY a.create_time DESC
+  </select>
+  
+    <select id="corlist"  resultType="CorporationUM">
+  SELECT 
+	  a.id,
+	  JSON_EXTRACT(a.floor,'$.building') building,
+	  JSON_EXTRACT(a.floor,'$.roomNum') roomNum,
+	  JSON_EXTRACT(a.floor,'$.layer') layer,
+	  JSON_EXTRACT(a.floor,'$.unit') unit,
+	  a.cor_name  corName,
+	  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+	  a .address ,
+	  a.dev_count devCount,
+	  a.latitude,
+	  a.longitude,
+	  a.scope,
+	  a.bus_license busLicense
+  FROM ${dynamicDbname}.`hk_corporation`  a
+  WHERE 1=1
+	    <if test="corName !=null and corName != ''">
+	    AND a.cor_name  LIKE   concat('%',#{corName},'%') 
+	  </if>
+		ORDER BY a.create_time DESC
+  </select>
+  
+  <select id="selectCorTotal" resultType="java.lang.Integer">
+	SELECT COUNT(1) 
+	FROM ${map.dynamicDbname}.`hk_corporation` a
+	<if test="map.labelTypeId != null">
+    LEFT JOIN ${map.dynamicDbname}.`hk_corporation_label` b ON a.label_id =b.id
+	LEFT JOIN ${map.dynamicDbname}.`hk_corporation_label_type` c ON b.type_id =c.id
+	WHERE c.id =#{map.labelTypeId} AND b.state =0
+      </if>
+  </select>
+
+  <select id="selectCorPerTotal"  resultType="java.lang.Integer">
+  		SELECT COUNT(id)  FROM ${dynamicDbname}.`hk_cor_per_relation` WHERE 1=1
+  		<if test="corporationId !=null ">
+			and  corporation_id = #{corporationId} 
+		</if>
+  </select>
+  
+  <select id="selectCorTypeGroup"  resultType="CorTypeCountUM" >
+  SELECT a.KEY_VALUE corType,
+  COUNT(b.id)  corTypeCount
+  FROM (
+	SELECT a.id ,a.KEY_VALUE 
+	FROM hotcomm_community.hk_diction a
+	WHERE a.type = 'E01') a
+	LEFT JOIN ${dynamicDbname}.`hk_corporation` b ON a.id = b.cor_type_id
+ GROUP BY a.KEY_VALUE
+  </select>
+  
+<select id="selectCorTypeCount"  resultType="CorTypeCountUM" >
+	SELECT a.label_name corType,COUNT(b.id) corTypeCount FROM (
+	SELECT a.id,a.label_name  
+	FROM   ${dynamicDbname}.`hk_corporation_label`  a WHERE a.type_id = #{typeId}) a
+	LEFT JOIN  ${dynamicDbname}.`hk_corporation` b ON b.`label_id` = a.id
+	GROUP BY a.label_name
+  </select>
+  
+  <select id="selectCorMonCount"  resultType="CorMonCountUM" >
+	SELECT b.Mon AS mon,
+		CASE WHEN a.COUNT IS NOT NULL THEN a.COUNT ELSE 0 END AS count
+	FROM
+		(SELECT DATE_FORMAT(a.create_time, '%m') Mon,COUNT(a.id)  COUNT 
+		FROM ${dynamicDbname}.`hk_corporation` a
+		WHERE DATE_FORMAT(a.create_time, '%Y') = #{year}
+		GROUP BY Mon) a
+	RIGHT JOIN
+		(SELECT 1 AS Mon UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+		UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+		 )  b ON a.Mon = b.Mon
+	 ORDER BY b.Mon ASC
+  </select>
+  
+  <select id="detail"  resultType="CorporationUM">
+    select 
+	  a.id,
+	  JSON_EXTRACT(a.floor,'$.building') building,
+	  JSON_EXTRACT(a.floor,'$.roomNum') roomNum,
+	  JSON_EXTRACT(a.floor,'$.layer') layer,
+	  JSON_EXTRACT(a.floor,'$.unit') unit,
+	   a .address,
+	   d.id corTypeId,
+	  d.key_value corType,
+	  a.cor_name  corName,
+	  c.id labelId,
+	  c.label_name labelName,
+	  a.dev_count  devCount,
+	  a.latitude,
+	  a.longitude,
+	  a.scope,
+	  a.bus_license busLicense,
+	  a.floor floor,
+	  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime
+	  FROM ${dynamicDbname}.`hk_corporation`  a
+	  LEFT JOIN ${dynamicDbname}.`hk_corporation_label` c ON c.id = a.label_id
+	  LEFT JOIN hotcomm_community.hk_diction d ON a.cor_type_id = d.id
+    where 1=1
+     <if test="id != null">
+        AND a.id = #{id}
+      </if>
+       <if test="corName != null and corName != ''">
+        AND a.cor_name = #{corName}
+      </if>
+  </select>
+  
+  <delete id="delete" parameterType="CorporationDM">
+    delete from ${dynamicDbname}.`hk_corporation`
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+    <select id="selectCorPersonList"  resultType="CorPerRelationUM">
+    select 
+     b.id ,
+     a.p_id personId,
+	  a.headImg,
+	  a.name  personName,
+	 (case  a.sex 
+	 when 1 then '男' 
+	 when 2 then '女' end
+	 )  sex,
+	  a.card_no cardNo,
+	  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime
+	  FROM ${pa.dynamic_dbname}.`hk_person`  a
+	  LEFT JOIN ${pa.dynamic_dbname}.`hk_cor_per_relation` b ON a.p_id = b.person_id
+    where b.corporation_id = #{pa.corporationId}
+     <if test="pa.peronName != null and pa.peronName != ''">
+          AND a.name LIKE concat('%',#{pa.peronName},'%')
+      </if>
+  </select>
+  
+      <select id="selectPersonList"  resultType="CorPerRelationUM">
+    select 
+     b.id ,
+     a.p_id personId,
+	  a.name  personName,
+	  a.phone phone
+	  FROM ${dynamicDbname}.`hk_person`  a
+	  LEFT JOIN ${dynamicDbname}.`hk_cor_per_relation` b ON a.p_id = b.person_id
+    where b.corporation_id = #{corporationId}
+     <if test="personName != null and personName != '' ">
+          AND a.name LIKE concat('%',#{personName},'%')
+      </if>
+  </select>
+
+  <delete id="deleteCorPersonById" >
+    delete from ${dynamicDbname}.`hk_cor_per_relation`
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+<insert id="insertCorPerRelationBatch"  >
+    INSERT INTO ${dynamicDbname}.`hk_cor_per_relation`
+            (corporation_id,person_id)
+    VALUES
+    <foreach collection ="list"  item="item" separator =",">
+         ( #{item.corporationId},#{item.personId})
+    </foreach >
+</insert>
+
+  <update id="updateCorPerRelation" parameterType="CorPersonRelationDM">
+    update ${dynamicDbname}.`hk_cor_per_relation`
+    <set>
+      <if test="corporationId != null">
+        corporation_id = #{corporationId,jdbcType=INTEGER},
+      </if>
+      <if test="personId != null">
+        person_id = #{personId,jdbcType=INTEGER},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+    <select id="selectCorPerRelation"  resultType="CorPersonRelationDM">
+    select 
+    id, corporation_id corporationId, person_id personId
+    from ${dynamicDbname}.`hk_cor_per_relation`
+    where 1=1
+    <if test ="id !=null">
+    	 	and  id = #{id,jdbcType=INTEGER}
+    </if>
+     <if test ="corporationId !=null">
+    	 	and  corporation_id = #{corporationId,jdbcType=INTEGER}
+    </if>
+     <if test ="personId !=null">
+    	 	and  person_id = #{personId,jdbcType=INTEGER}
+    </if>
+  </select>
+  
+  <insert id="insert" parameterType="CorporationDM">
+    insert into ${dynamicDbname}.`hk_corporation`
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        id,
+      </if>
+      <if test="corName != null">
+        cor_name,
+      </if>
+      <if test="floor != null">
+        floor,
+      </if>
+       <if test="address != null">
+        address,
+      </if>
+      <if test="corTypeId != null">
+        cor_type_id,
+      </if>
+      <if test="scope != null">
+        scope,
+      </if>
+      <if test="longitude != null">
+        longitude,
+      </if>
+      <if test="latitude != null">
+        latitude,
+      </if>
+      <if test="labelId != null">
+        label_id,
+      </if>
+      <if test="busLicense != null">
+        bus_license,
+      </if>
+      <if test="devCount != null">
+        dev_count,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="createUser != null">
+        create_user,
+      </if>
+      <if test="updateTime != null">
+        update_time,
+      </if>
+      <if test="updateUser != null">
+        update_user,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="corName != null">
+        #{corName,jdbcType=VARCHAR},
+      </if>
+     <if test="floor != null">
+        #{floor,jdbcType=VARCHAR},
+      </if>
+      <if test="address != null">
+        #{address,jdbcType=VARCHAR},
+      </if>
+      <if test="corTypeId != null">
+        #{corTypeId,jdbcType=INTEGER},
+      </if>
+      <if test="scope != null">
+        #{scope,jdbcType=VARCHAR},
+      </if>
+      <if test="longitude != null">
+        #{longitude,jdbcType=DOUBLE},
+      </if>
+      <if test="latitude != null">
+        #{latitude,jdbcType=DOUBLE},
+      </if>
+      <if test="labelId != null">
+        #{labelId,jdbcType=INTEGER},
+      </if>
+      <if test="busLicense != null">
+        #{busLicense,jdbcType=VARCHAR},
+      </if>
+    <if test="devCount != null">
+        #{devCount,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  
+  <update id="update" parameterType="CorporationDM">
+    update ${dynamicDbname}.`hk_corporation`
+    <set>
+      <if test="corName != null">
+        cor_name = #{corName,jdbcType=VARCHAR},
+      </if>
+      <if test="floor != null">
+        floor = #{floor,jdbcType=VARCHAR},
+      </if>
+      <if test="address != null">
+        address = #{address,jdbcType=VARCHAR},
+      </if>
+      <if test="corTypeId != null">
+        cor_type_id = #{corTypeId,jdbcType=INTEGER},
+      </if>
+      <if test="scope != null">
+        scope = #{scope,jdbcType=VARCHAR},
+      </if>
+      <if test="longitude != null">
+        longitude = #{longitude,jdbcType=DOUBLE},
+      </if>
+      <if test="latitude != null">
+        latitude = #{latitude,jdbcType=DOUBLE},
+      </if>
+      <if test="labelId != null">
+        label_id = #{labelId,jdbcType=INTEGER},
+      </if>
+      <if test="busLicense != null">
+        bus_license = #{busLicense,jdbcType=VARCHAR},
+      </if>
+      <if test="devCount != null">
+        dev_count = #{devCount,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        create_user = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        update_user = #{updateUser,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+</mapper>

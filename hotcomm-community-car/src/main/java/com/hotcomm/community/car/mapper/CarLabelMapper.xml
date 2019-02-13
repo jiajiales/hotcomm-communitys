@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.car.mapper.CarLabelMapper">
+
+  <select id="pagelist"  resultType="CarLabelUM">
+		  SELECT 
+		  a.id,
+		  b.key_value type,  
+		  a.name  labelName,
+		  a.label_describe labelDescribe, 
+		  (case a.label_source
+			  when 0  then '系统'
+	          when 1 then '自定义'
+	          else '异常状态' end)  labelSource,
+	       a.alarm_leve alarmLeve,
+	      a.create_user createUser,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+		  a.state,
+		  (case  a.state
+			  when 0  then true
+	          when 1 then false  end)  stateBl
+		 FROM ${pa.dynamic_dbname}.`hk_car_label`  a
+		 LEFT JOIN hk_diction b ON a.label_type_id = b.id
+		 WHERE 1=1
+		 <if test="pa.typeId !=null">
+			and a.label_type_id = #{pa.labelTypeId}
+		</if>
+		 <if test="pa.labelSource !=null ">
+			and a.label_source = #{pa.labelSource}
+		</if>
+		<if test="pa.state !=null ">
+			and a.state = #{pa.state}
+		</if> 
+ 		 ORDER BY a.create_time DESC
+  </select>
+  
+  <select id="labelList"  resultType="CarLabelUM">
+		  SELECT 
+		  a.id,
+		  a.name  labelName,
+		  a.label_describe labelDescribe
+		 FROM ${dynamicDbname}.`hk_car_label`  a
+		 WHERE 1=1 AND state = 0
+		 <if test="labelTypeId != null">
+		 		AND a.label_type_id = #{labelTypeId}
+		 </if>
+ 		 ORDER BY a.create_time DESC
+  </select>
+  
+  <select id="selectLabelListByType"  resultType="java.lang.Integer">
+  	SELECT  a.id
+  	FROM ${dynamicDbname}.`hk_car_label`  a
+  	INNER JOIN hk_diction b ON a.label_type_id = b.id
+  	WHERE a.label_type_id = #{labelTypeId}
+  </select>
+  
+    <select id="detail"  resultType="CarLabelUM">
+		  SELECT 
+		  a.id,
+		  a.label_type_id labelTypeId,
+		  b.key_value type,  
+		  a.name  labelName,
+		  a.label_describe labelDescribe, 
+		  (case a.label_source
+			  when 0  then '系统'
+	          when 1 then '自定义'
+	          else '异常状态' end)  labelSource,
+	       a.alarm_leve alarmLeve,
+	      a.create_user createUser,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+		  a.state
+		 FROM ${dynamicDbname}.`hk_car_label`  a
+		 LEFT JOIN hk_diction b ON a.label_type_id = b.id
+		 WHERE 1=1
+		 <if test="id !=null ">
+			and a.id = #{id}
+		</if>
+		<if test="name !=null and name  != '' ">
+			and a.name = #{name}
+		</if>
+  </select>
+  
+    <delete id="delete" parameterType="CarLabelDM">
+    delete from ${dynamicDbname}.`hk_car_label` 
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+   <update id="update" parameterType="CarLabelDM">
+    update  ${dynamicDbname}.`hk_car_label` 
+    <set>
+      <if test="carLabelId != null">
+        label_type_id = #{carLabelId,jdbcType=INTEGER},
+      </if>
+      <if test="name != null ">
+        name = #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="labelDescribe != null">
+        label_describe = #{labelDescribe,jdbcType=VARCHAR},
+      </if>
+      <if test="labelSource != null">
+        label_source = #{labelSource,jdbcType=BIT},
+      </if>
+      <if test="alarmLeve != null">
+        alarm_leve = #{alarmLeve,jdbcType=BIT},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        create_user = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        update_user = #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="state != null">
+        state = #{state,jdbcType=BIT},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+   <insert id="insert" parameterType="CarLabelDM">
+     <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">  
+        SELECT LAST_INSERT_ID()  
+    </selectKey>
+    insert into ${dynamicDbname}.`hk_car_label` 
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        id,
+      </if>
+      <if test="carLabelId != null">
+        label_type_id,
+      </if>
+      <if test="name != null">
+        name,
+      </if>
+      <if test="labelDescribe != null">
+        label_describe,
+      </if>
+      <if test="labelSource != null">
+        label_source,
+      </if>
+      <if test="alarmLeve != null">
+        alarm_leve,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="createUser != null">
+        create_user,
+      </if>
+      <if test="updateTime != null">
+        update_time,
+      </if>
+      <if test="updateUser != null">
+        update_user,
+      </if>
+      <if test="state != null">
+        state,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="carLabelId != null">
+        #{carLabelId,jdbcType=INTEGER},
+      </if>
+      <if test="name != null">
+        #{name,jdbcType=VARCHAR},
+      </if>
+      <if test="labelDescribe != null">
+        #{labelDescribe,jdbcType=VARCHAR},
+      </if>
+      <if test="labelSource != null">
+        #{labelSource,jdbcType=BIT},
+      </if>
+      <if test="alarmLeve != null">
+        #{alarmLeve,jdbcType=BIT},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="state != null">
+        #{state,jdbcType=BIT},
+      </if>
+    </trim>
+  </insert>
+  
+  
+  
+</mapper>

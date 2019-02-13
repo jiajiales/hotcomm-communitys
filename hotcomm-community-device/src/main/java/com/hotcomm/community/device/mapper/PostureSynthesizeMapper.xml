@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.device.mapper.PostureSynthesizeMapper">
+
+	<select id="selectDeviceNum" resultType="com.hotcomm.community.common.bean.ui.device.postureSynthesize.SelectDeviceNumUM">
+		SELECT COUNT(id) Num, COUNT(CASE WHEN `state` = 1 THEN id END) offNum, COUNT(CASE WHEN `state` = 3 THEN id END) alarmNum
+		FROM ${tableParams.dynamic_dbname}.`hk_device`
+		WHERE is_enble = 1
+	</select>
+
+	<select id="selectRecentlySevenDays" resultType="com.hotcomm.community.common.bean.ui.device.postureSynthesize.SelectRecentlySevenDaysUM">
+		SELECT COUNT(a.`id`) `alarmNum` , DATE_FORMAT(a.`create_time`,'%w') `week`
+		FROM ${tableParams.base_dbname}.`hk_device_type` t
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`is_enble` = 1 AND d.`use_type` = 1
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.`alarm_source` = d.`mac`
+		 AND DATE_SUB(CURDATE(), INTERVAL 7 DAY) &lt;= DATE(a.`create_time`)
+		WHERE t.`use_id` = 1 AND a.`alarm_source_type` = t.`alarm_id`
+		GROUP BY DATE_FORMAT(a.`create_time`,'%Y-%m-%d')
+		ORDER BY DATE_FORMAT(a.`create_time`,'%Y-%m-%d') ASC
+	</select>
+	
+	<select id="selectFullStatistics" resultType="com.hotcomm.community.common.bean.ui.device.postureSynthesize.SelectFullStatisticsUM">
+		SELECT COUNT(id) num, COUNT(CASE WHEN state = 1 THEN id END ) offLine , COUNT(CASE WHEN state = 3 THEN id END ) alarm
+		FROM ${tableParams.dynamic_dbname}.`hk_device`
+		WHERE is_enble = 1
+	</select>
+
+</mapper>

@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.car.mapper.CarRegMapper">
+  
+  <select id="pagelist"  resultType="CarRegUM">
+		  SELECT 
+		  a.id,
+  		  SUBSTRING(JSON_EXTRACT(a.photo,"$.front"), 2, LENGTH(JSON_EXTRACT(a.photo,"$.front"))-2) frontPhoto,
+		  a.num,
+		  a.color, 
+		  a.brand,
+		  a.model, 
+		  a.model_type modelType,
+		  a.person_id personId,
+		  c.id labelId,
+   		 (case a.type
+			  when 0  then '小区车辆'
+	          when 1 then '单位车辆'
+	          else '其他登记车辆' end)  carType,
+		  e.phone personPhone, 
+		  e.name personName,
+		  c.name labelName,
+		  a.alarm_count  alarmCount,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+		 b.id   labelRelationId,
+		  a.create_user createUser
+		 FROM ${pa.dynamic_dbname}.`hk_car_reg`  a
+		 LEFT JOIN ${pa.dynamic_dbname}.`hk_car_label_relation` b ON a.num = b.car_num
+		 LEFT JOIN  (SELECT  id , name ,label_type_id FROM  ${pa.dynamic_dbname}.`hk_car_label` WHERE  state = 0)  c ON b.label_id = c.id
+		 LEFT JOIN hotcomm_community.hk_diction d ON c.label_type_id = d.id
+		 LEFT JOIN ${pa.dynamic_dbname}.`hk_person` e ON a.person_id = e.p_id
+		 WHERE 1=1 
+		 <if test="pa.id !=null">
+			and a.id = #{pa.id}
+		</if>
+		 <if test="pa.type !=null ">
+			and a.type = #{pa.type}
+		</if>
+		<if test="pa.labelId !=null  ">
+			and c.id = #{pa.labelId}
+		</if>
+		<if test="pa.color !=null  and pa.color  != '' ">
+			and a.color = #{pa.color}
+		</if>
+		<if test="pa.brand!=null and pa.brand!='' ">
+			and a.brand = #{pa.brand}
+		</if>
+		<if test="pa.modelType !=null  and pa.modelType != ''">
+			and a.model_type = #{pa.modelType}
+		</if>
+		<if test="pa.startTime !=null and  pa.startTime != '' ">
+			and a.create_time >=  #{pa.startTime}
+		</if>
+		<if test="pa.endTime !=null and  pa.endTime != '' ">
+			and #{pa.endTime} >= a.create_time
+		</if>
+		<if test="pa.num !=null and  pa.num != '' ">
+			and a.num LIKE concat('%',#{pa.num},'%')
+		</if>
+		<if test="pa.companyId !=null  ">
+			and a.company_id = #{pa.companyId}
+		</if>
+		<if test="pa.personId !=null  ">
+			and a.person_id = #{pa.personId}
+		</if>
+        <choose>
+           <when test="pa.labelTypeId!=null">
+              and d.id = #{pa.labelTypeId}
+           </when>
+           <otherwise>
+               and a.page_source  = 0
+            </otherwise>
+         </choose>
+ 		 ORDER BY a.create_time DESC
+  </select>
+  
+  <select id="detail"  resultType="CarRegDetailUM">
+		  SELECT 
+		  a.id,
+		  SUBSTRING(JSON_EXTRACT(a.photo,"$.side"), 2, LENGTH(JSON_EXTRACT(a.photo,"$.side"))-2) sidePhoto,
+		  SUBSTRING(JSON_EXTRACT(a.photo,"$.tail"), 2, LENGTH(JSON_EXTRACT(a.photo,"$.tail"))-2) tailPhoto,
+		  SUBSTRING(JSON_EXTRACT(a.photo,"$.front"), 2, LENGTH(JSON_EXTRACT(a.photo,"$.front"))-2) frontPhoto,
+		  SUBSTRING(JSON_EXTRACT(a.photo,"$.else"), 2, LENGTH(JSON_EXTRACT(a.photo,"$.else"))-2) elsePhoto,
+		  a.num,
+		  a.color, 
+		  a.brand,
+		  a.model, 
+		  a.model_type modelType,
+   		 (case a.type
+			  when 0  then '小区车辆'
+	          when 1 then '单位车辆'
+	          else '其他登记车辆' end)  carType,
+	       a.type carTypeId,
+	      a.person_id personId,
+		  d.phone personPhone, 
+		  d.name personName,
+		  c.name labelName,
+		  a.type   carTypeCode,
+		  a.company_id companyId,
+		  e.cor_name  corName,
+		  e.address corAddress,
+		  b.id labelRelationId,
+		  c.id labelId,
+		  d.key_value labelTypeName,
+		  a.alarm_count  alarmCount,
+		  a.create_user createUser
+		 FROM ${dynamicDbname}.`hk_car_reg`  a
+		 LEFT JOIN ${dynamicDbname}.`hk_car_label_relation` b ON a.num = b.car_num
+		 LEFT JOIN  (SELECT  id , name ,label_type_id FROM  ${dynamicDbname}.`hk_car_label` WHERE  state = 0)  c ON b.label_id = c.id
+		 LEFT JOIN hotcomm_community.hk_diction d ON c.label_type_id = d.id
+		 LEFT JOIN ${dynamicDbname}.`hk_person` d ON a.person_id = d.p_id
+		 LEFT JOIN ${dynamicDbname}.`hk_corporation` e ON a.company_id = e.id
+		 WHERE 1=1
+		 <if test="id !=null ">
+			and a.id = #{id}
+		</if>
+		<if test="num !=null and num !=''">
+			and a.num = #{num}
+		</if>
+  </select>
+  
+  <delete id="delete" parameterType="CarRegDM">
+    delete from ${dynamicDbname}.`hk_car_reg` 
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+ <select id="selectCount"   resultType="java.lang.Integer" >
+  		SELECT COUNT(1)  FROM ${dynamicDbname}.`hk_car_reg`  where 1=1
+  		<if test="pageSource != null">
+            and page_source = #{pageSource}
+        </if>
+  		<if test="companyId != null">
+  				and  company_id = #{companyId}
+  		</if>
+  </select>
+  
+  <select id="selectCorCarCount"    resultType="java.lang.Integer" >
+  		SELECT COUNT(1)  FROM ${dynamicDbname}.`hk_car_reg`  where company_id is not null
+  </select>
+  
+	<select id="selectTypeCount"   resultType="CarTypeCountDM" >
+  		SELECT 	(
+		CASE type
+			WHEN 0 THEN    '小区车辆'
+			WHEN 1 THEN 	'单位车辆'
+			ELSE  '其他登记车辆'  END	) carType,
+		COUNT(1)   count
+	FROM ${dynamicDbname}.`hk_car_reg`
+	WHERE page_source =0
+	GROUP BY carType;
+  </select>
+  
+   <insert id="insert"    parameterType="CarRegDM"  >
+       <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">  
+        SELECT LAST_INSERT_ID()  
+    </selectKey>
+    insert into ${dynamicDbname}.`hk_car_reg` 
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <!--<if test="uuid != null">-->
+        <!--uuid,-->
+      <!--</if>-->
+      <if test="num != null">
+        num,
+      </if>
+      <if test="color != null">
+        color,
+      </if>
+      <if test="brand != null">
+        brand,
+      </if>
+      <if test="model != null">
+        model,
+      </if>
+      <if test="modelType != null">
+        model_type,
+      </if>
+      <if test="type != null">
+        type,
+      </if>
+     <if test="personId != null">
+        person_id,
+      </if>
+      <if test="enterCount != null">
+        enter_count,
+      </if>
+      <if test="alarmCount != null">
+        alarm_count,
+      </if>
+      <if test="companyId != null">
+        company_id,
+      </if>
+      <if test="pageSource != null">
+        page_source,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="createUser != null">
+        create_user,
+      </if>
+      <if test="updateTime != null">
+        update_time,
+      </if>
+      <if test="updateUser != null">
+        update_user,
+      </if>
+      <if test="photo != null">
+        photo,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <!--<if test="uuid != null">-->
+        <!--#{uuid,jdbcType=VARCHAR},-->
+      <!--</if>-->
+      <if test="num != null">
+        #{num,jdbcType=VARCHAR},
+      </if>
+      <if test="color != null">
+        #{color,jdbcType=VARCHAR},
+      </if>
+      <if test="brand != null">
+        #{brand,jdbcType=VARCHAR},
+      </if>
+      <if test="model != null">
+        #{model,jdbcType=VARCHAR},
+      </if>
+      <if test="modelType != null">
+        #{modelType,jdbcType=VARCHAR},
+      </if>
+      <if test="type != null">
+        #{type,jdbcType=BIT},
+      </if>
+     <if test="personId != null">
+    	 #{personId,jdbcType=INTEGER},
+      </if>
+      <if test="enterCount != null">
+        #{enterCount,jdbcType=INTEGER},
+      </if>
+      <if test="alarmCount != null">
+        #{alarmCount,jdbcType=INTEGER},
+      </if>
+      <if test="companyId != null">
+        #{companyId,jdbcType=INTEGER},
+      </if>
+      <if test="pageSource != null">
+        #{pageSource,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="photo != null">
+        #{photo,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  
+    <update id="updateAlarmCountById" >
+    update ${dynamicDbname}.`hk_car_reg`  set alarm_count = #{alarmCount}  where id = #{id}
+  </update>
+  
+ <update id="deleteCarPerson" >
+    update ${dynamicDbname}.`hk_car_reg`  set person_id =null  where id = #{id}
+  </update>
+  
+    <update id="update" parameterType="CarRegDM">
+    update ${dynamicDbname}.`hk_car_reg` 
+    <set>
+      <!--<if test="uuid != null">-->
+        <!--uuid = #{uuid,jdbcType=VARCHAR},-->
+      <!--</if>-->
+      <if test="num != null">
+        num = #{num,jdbcType=VARCHAR},
+      </if>
+      <if test="color != null">
+        color = #{color,jdbcType=VARCHAR},
+      </if>
+      <if test="brand != null">
+        brand = #{brand,jdbcType=VARCHAR},
+      </if>
+     <if test="personId != null">
+         person_id = #{personId,jdbcType=INTEGER},
+      </if>
+      <if test="model != null">
+        model = #{model,jdbcType=VARCHAR},
+      </if>
+      <if test="type != null">
+        type = #{type,jdbcType=BIT},
+      </if>
+      <if test="enterCount != null">
+        enter_count = #{enterCount,jdbcType=INTEGER},
+      </if>
+      <if test="modelType != null">
+        model_type = #{modelType,jdbcType=VARCHAR},
+      </if>
+      <if test="alarmCount != null">
+        alarm_count = #{alarmCount,jdbcType=INTEGER},
+      </if>
+      <if test="companyId != null">
+        company_id = #{companyId,jdbcType=INTEGER},
+      </if>
+      <if test="pageSource != null">
+          page_source = #{pageSource,jdbcType=INTEGER},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        create_user = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        update_user = #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="photo != null">
+        photo = #{photo,jdbcType=LONGVARCHAR},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.ResourceMapper">
+
+	<resultMap type="ResourceDM" id="ResourceDMMap">
+		<id column="id" property="resId" />
+		<result column="res_icon" property="icon" />
+		<result column="res_path" property="path" />
+		<result column="res_type" property="type" />
+		<result column="res_name" property="name" />
+		<result column="res_weight" property="weight" />
+		<result column="res_status" property="status" />
+		<result column="res_pid" property="pid" />
+		<result column="res_key" property="key" />
+	</resultMap>
+
+	<resultMap type="ResourceGradingUM" id="ResourceGradingUMMap">
+		<id column="id" property="resId" />
+		<result column="res_icon" property="icon" />
+		<result column="res_path" property="path" />
+		<result column="res_type" property="type" />
+		<result column="res_name" property="name" />
+		<result column="res_weight" property="weight" />
+		<result column="res_status" property="status" />
+		<result column="res_pid" property="pid" />
+		<result column="res_key" property="key" />
+	</resultMap>
+
+	<insert id="addResource" parameterType="com.hotcomm.community.common.bean.pa.system.ResourcePA">
+		INSERT INTO hk_sys_resource(res_path, res_icon, res_key, res_name, res_type, res_status, res_pid, res_weight)
+		VALUES(#{path}, #{icon}, #{key}, #{name}, #{type}, #{status}, #{pid}, #{weight})
+	</insert>
+
+	<delete id="delResource" parameterType="java.lang.Integer">
+		DELETE FROM hk_sys_resource WHERE id = #{resourceId}
+	</delete>
+
+	<update id="updateResource" parameterType="com.hotcomm.community.common.bean.pa.system.ResourcePA">
+		UPDATE hk_sys_resource
+		SET res_path = #{path}, res_icon = #{icon}, res_key = #{key}, 
+			res_name = #{name}, res_type = #{type}, res_status = #{status},
+			res_pid = #{pid}, res_weight = #{weight}
+		WHERE id = #{resId}
+	</update>
+
+	<select id="getResource" parameterType="java.lang.Integer" resultType="com.hotcomm.community.common.bean.ui.system.ResourceUM">
+		SELECT id resId, res_icon icon, res_path path, res_key `key`, res_name `name`, res_type `type`, res_status `status`, res_pid pid, res_weight weight
+		FROM hk_sys_resource
+		WHERE id = #{resourceId}
+	</select>
+
+	<select id="getResourcesByUserId" parameterType="java.lang.Integer" resultMap="ResourceDMMap">
+		SELECT f3.id, f3.res_icon, f3.res_path, f3.res_key, f3.res_name, f3.res_type, f3.res_status, f3.res_pid, f3.res_weight
+		FROM hk_sys_resource f3 
+		<where>
+			f3.id IN (
+				SELECT f1.resource_id
+				FROM hk_sys_role_resource f1
+				INNER JOIN hk_sys_user_role f2 ON f1.role_id = f2.role_id
+				WHERE f2.user_id = #{userId}
+			) AND f3.res_status = 1
+		</where>
+	</select>
+
+	<select id="getResourcesGradingByUserId" parameterType="java.lang.Integer" resultMap="ResourceGradingUMMap">
+		SELECT f3.id, f3.res_icon, f3.res_path, f3.res_key, f3.res_name, f3.res_type, f3.res_status, f3.res_pid, f3.res_weight
+		FROM hk_sys_resource f3 
+		<where>
+			f3.id IN (
+				SELECT f1.resource_id
+				FROM hk_sys_role_resource f1
+				INNER JOIN hk_sys_user_role f2 ON f1.role_id = f2.role_id
+				WHERE f2.user_id = #{userId}
+			) AND f3.res_status = 1
+		</where>
+	</select>
+
+	<select id="getResourdTree" resultType="com.hotcomm.community.common.bean.ui.system.ResourceUM">
+		SELECT f1.id resId, f1.res_icon icon, f1.res_path path, f1.res_name `name`,
+			f1.res_key `key`, f1.res_pid pid, f1.res_type `type`,
+			f1.res_weight weight, f1.res_status `status`,
+			IFNULL((SELECT f2.res_name FROM hk_sys_resource f2 WHERE f2.id = f1.res_pid),'') pname
+		FROM hk_sys_resource f1
+	</select>
+
+	<select id="getMenus" resultType="com.hotcomm.community.common.bean.ui.system.ResourcMenuUM">
+		SELECT f1.id resId,f1.res_name menuName
+		FROM hk_sys_resource f1
+		WHERE f1.res_status = 1 AND f1.res_type = 1
+	</select>
+
+	<select id="isPathExist" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_resource WHERE res_path = #{path} LIMIT 1
+	</select>
+
+	<select id="isKeyExist" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_resource WHERE res_key = #{key} LIMIT 1
+	</select>
+
+</mapper>

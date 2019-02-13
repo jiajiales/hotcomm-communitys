@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.car.mapper.CarPassRecordsMapper">
+
+  <select id="pagelist"  resultType="CarPassRecordsUM">
+		  SELECT 
+		  a.id,
+		 SUBSTRING(JSON_EXTRACT (a.img_path, "$.carImg"), 2, LENGTH(JSON_EXTRACT (a.img_path, "$.carImg"))-2) carImgPath,
+		  a.first_img_path firstImgPath,
+		  a.car_num  num,
+/*		  a.uuid,*/
+   		 (case car_type
+			  when 0  then '小区车辆'
+	          when 1 then '单位车辆'
+	          when 2 then '其他登记车'
+	          else '陌生车' end)  carType,
+	      a.car_type carTypeId,
+		  a.adress,
+		  a.color,
+		  a.brand,
+		  a.model,
+		  a.model_type modelType,
+		  a.video_code videoCode,
+   		 (case a.pass_type
+			  when 0  then '驶入'
+	          when 1 then '驶出'
+	          else '经过' end)  passType,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d %T') createTime
+		 FROM ${pa.dynamic_dbname}.`hk_car_pass_records`  a
+		 INNER JOIN  ${pa.dynamic_dbname}.`hk_car_label_relation`  b ON a.car_num = b.car_num
+		 WHERE 1=1
+		 <if test="pa.carType !=null ">
+			and a.car_type = #{pa.carType}
+		</if>
+		<if test="pa.labelId !=null  ">
+			and b.label_id = #{pa.labelId}
+		</if>
+		<if test="pa.startTime !=null and  pa.startTime != '' ">
+			and a.create_time >=  #{pa.startTime}
+		</if>
+		<if test="pa.endTime !=null and  pa.endTime != '' ">
+			and #{pa.endTime} >= a.create_time
+		</if>
+		<if test="pa.num !=null and  pa.num != '' ">
+			and a.car_num = #{pa.num}
+		</if>
+		<if test="pa.passType !=null ">
+			and a.pass_type = #{pa.passType}
+		</if>
+		<if test="pa.adress !=null and  pa.adress != '' ">
+			and a.adress = #{pa.adress}
+		</if>
+				<if test="pa.color !=null and  pa.color != '' ">
+			and a.color = #{pa.color}
+		</if>
+				<if test="pa.brand !=null and  pa.brand != '' ">
+			and a.brand = #{pa.brand}
+		</if>
+				<if test="pa.modelType !=null and  pa.modelType != '' ">
+			and a.model_type = #{pa.modelType}
+		</if>
+ 		 ORDER BY a.create_time DESC
+  </select>
+  
+    <select id="selectPassRecordList"  resultType="CarPassRecordsUM">
+		  SELECT 
+		  a.id,
+		 SUBSTRING(JSON_EXTRACT (a.img_path, "$.carImg"), 2, LENGTH(JSON_EXTRACT (a.img_path, "$.carImg"))-2) carImgPath,
+		 a.first_img_path firstImgPath,
+		  a.car_num  num,
+		   a.adress,
+   		 (case car_type
+			  when 0  then '小区车辆'
+	          when 1 then '单位车辆'
+	          when 2 then '其他登记车'
+	          else '陌生车' end)  carType,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d %H:%i') createTime
+/*		   a.uuid*/
+		 FROM ${dynamicDbname}.`hk_car_pass_records`  a
+ 		 ORDER BY a.create_time DESC
+ 		 <if test="limtData != null">
+ 		 LIMIT #{limtData}
+ 		 </if>
+  </select>
+  
+    <select id="selectNewCarAddress"  resultType="CarPassRecordsUM">
+		  SELECT 
+		  a.id,
+		  SUBSTRING(JSON_EXTRACT (a.img_path, "$.carImg"), 2, LENGTH(JSON_EXTRACT (a.img_path, "$.carImg"))-2) carImgPath,
+		  video_code videoCode,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d %H:%i') createTime,
+		  b.lat,
+		  b.lon,
+		  a.adress
+		 FROM ${dynamicDbname}.`hk_car_pass_records`  a
+		 LEFT JOIN ${dynamicDbname}.`hk_device_video`  b ON b.mac = a.video_code
+		 WHERE 1=1
+		<if test="num !=null and  num != '' ">
+			and a.car_num = #{num}
+		</if>
+ 		 ORDER BY a.create_time DESC
+ 		 LIMIT 1
+  </select>
+  
+    <select id="detail" resultType="CarPassRecordsUM">
+		  SELECT 
+		  a.id,
+ 		  SUBSTRING(JSON_EXTRACT (a.img_path, "$.carImg"), 2, LENGTH(JSON_EXTRACT (a.img_path, "$.carImg"))-2) carImgPath,
+/*  		  SUBSTRING(JSON_EXTRACT (a.img_path, "$.carNumImg"), 2, LENGTH(JSON_EXTRACT (a.img_path, "$.carNumImg"))-2) carNumImgPath,*/
+		  a.first_img_path firstImgPath,
+		  a.car_num  num,
+/*		  a.uuid,*/
+   		 (case car_type
+			  when 0  then '小区车辆'
+	          when 1 then '单位车辆'
+	          when 2 then '其他登记车'
+	          else '陌生车' end)  carType,
+		  a.adress,
+		  a.color,
+		  a.brand,
+		  a.model,
+		  a.model_type modelType,
+		  a.video_code videoCode,
+   		 (case a.pass_type
+			  when 0  then '驶入'
+	          when 1 then '驶出'
+	          else '经过' end)  passType,
+		  DATE_FORMAT(a.create_time,'%Y-%m-%d %T') createTime
+		 FROM ${dynamicDbname}.`hk_car_pass_records`  a
+    	 where a.id = #{id,jdbcType=INTEGER}
+  </select>
+  
+  <select id = "selectDayCount"  resultType="java.lang.Integer">
+	  SELECT COUNT(1)	
+	  FROM	${dynamicDbname}.`hk_car_pass_records`  
+	  WHERE 1=1
+	  <if test="day != null">
+	 	 AND DATE_FORMAT(create_time, '%Y-%m-%d') = #{day}
+	  </if>
+	  <if test="passType != null">
+	 	AND  pass_type = #{passType}
+	  </if>
+  </select>
+  
+   <select id = "selectDayCarCount" parameterType="java.util.Map"    resultType="java.lang.Integer">
+	  SELECT COUNT(a.car_num)	FROM (SELECT DISTINCT car_num  FROM ${dynamicDbname}.`hk_car_pass_records`
+	  WHERE DATE_FORMAT(create_time, '%Y-%m-%d') =#{day}
+	  <if test="carType != null">
+	 	AND  car_type = #{carType}
+	  </if>
+	  ) a
+  </select>
+  
+    <select id = "selectSenTimeCount"    resultType="java.lang.Integer">
+	  SELECT COUNT(1)	FROM	${dynamicDbname}.`hk_car_pass_records`  
+	  WHERE 	DATE_FORMAT(create_time, '%Y-%m') = #{month}  and DATE_FORMAT(create_time,'%H') >=  #{startTime} and #{endTime} > DATE_FORMAT(create_time,'%H')
+  </select>
+  
+      <select id = "selectSenTimeCount1"     resultType="java.lang.Integer">
+	  SELECT COUNT(1)	FROM	${dynamicDbname}.`hk_car_pass_records`  
+	  WHERE 	DATE_FORMAT(create_time, '%Y-%m') = #{month}  and DATE_FORMAT(create_time,'%H') >=  #{startTime} or #{endTime} > DATE_FORMAT(create_time,'%H')
+  </select>
+  
+   <select id = "selectAttentionCount"   resultType="CarAttentionCountUM">
+     SELECT a.name ,COUNT(c.car_num) COUNT FROM (
+	SELECT a.id ,a.name  
+	FROM ${dynamicDbname}.`hk_car_label` a  WHERE a.`label_type_id` = 14) a
+	LEFT JOIN ${dynamicDbname}.`hk_car_label_relation` b ON a.id = b.`label_id`
+	LEFT JOIN (SELECT car_num   FROM ${dynamicDbname}.`hk_car_pass_records`  
+		WHERE 	 DATE_FORMAT(create_time, '%Y-%m-%d') &gt;=  #{time} ) c  ON c.car_num = b.car_num   
+	GROUP BY  a.name 
+	UNION ALL 
+	SELECT  "黑名单车辆" ,COUNT(b.car_num)   COUNT
+	FROM 
+	${dynamicDbname}.`hk_car_label` a 
+	LEFT JOIN ${dynamicDbname}.`hk_car_label_relation` b ON a.id = b.label_id 
+	LEFT JOIN ${dynamicDbname}.`hk_car_pass_records` c  ON c.car_num = b.car_num 
+	WHERE a.label_type_id =13   AND a.state = 0 AND DATE_FORMAT(c.create_time, '%Y-%m-%d') &gt;=  #{time}
+  </select>
+  
+  <select id = "selectPosAttentionCount"   resultType="CarAttentionCountUM">
+  SELECT a.name ,COUNT(c.car_num) COUNT FROM (
+	SELECT a.id ,a.name  
+	FROM ${dynamicDbname}.`hk_car_label` a  WHERE a.`label_type_id` = 14) a
+	LEFT JOIN ${dynamicDbname}.`hk_car_label_relation` b ON a.id = b.`label_id`
+	LEFT JOIN (SELECT car_num   FROM ${dynamicDbname}.`hk_car_pass_records`  
+		WHERE DATE_FORMAT(create_time, '%Y-%m-%d') &gt;=  #{time} )c  ON c.car_num = b.car_num   
+	GROUP BY  a.name 
+	UNION ALL 
+	SELECT  "黑名单车辆" ,COUNT(b.car_num)   COUNT
+	FROM 
+	${dynamicDbname}.`hk_car_label` a 
+	LEFT JOIN ${dynamicDbname}.`hk_car_label_relation` b ON a.id = b.label_id 
+	LEFT JOIN ${dynamicDbname}.`hk_car_pass_records` c  ON c.car_num = b.car_num 
+	WHERE a.label_type_id =13   AND a.state = 0 AND DATE_FORMAT(c.create_time, '%Y-%m-%d') &gt;=  #{time}
+  </select>
+  
+    <select id="selectDistinctCarPassCount"  resultType="CarFeelPassHoursCountUM">
+	SELECT 
+	  a.hours,
+	  CASE
+	    WHEN b.hoursCount IS NOT NULL 
+	    THEN b.hoursCount 
+	    ELSE 0 
+	    END AS hoursCount 
+	FROM
+	  (SELECT 
+	    DATE_FORMAT(
+	      @tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 HOUR),
+	      '%H'
+	    ) AS hours 
+	  FROM
+	   ${dynamicDbname}.`hk_car_pass_records` 
+	    LEFT JOIN 
+	      (SELECT 
+	        @tempMinute := DATE_SUB(
+	         #{beginOfDate},
+	          INTERVAL 1 HOUR
+	        )) b 
+	      ON 1 = 1 
+	  LIMIT 24) AS a 
+	  LEFT JOIN 
+	    (SELECT COUNT(a.car_num) hoursCount,hours
+		FROM  (SELECT DISTINCT car_num  ,DATE_FORMAT(create_time, '%H') hours 
+			FROM ${dynamicDbname}.`hk_car_pass_records` 
+			WHERE DATE_FORMAT(create_time, '%Y-%m-%d') = #{today} )a GROUP BY hours ) AS b 
+	    ON a.hours = b.hours 
+	ORDER BY a.hours ASC
+  </select>
+  
+   <select id="selectMonYearCarPassCount"  resultType="CarFeelPassHoursCountUM">
+	SELECT 
+	  a.hours,
+	  CASE
+	    WHEN  FLOOR(b.hoursCount/#{day}) IS NOT NULL 
+	    THEN FLOOR(b.hoursCount/#{day})
+	    ELSE 0 
+	    END AS hoursCount 
+	FROM
+	  (SELECT 
+	    DATE_FORMAT(
+	      @tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 HOUR),
+	      '%H'
+	    ) AS hours 
+	  FROM
+	   ${dynamicDbname}.`hk_car_pass_records` 
+	    LEFT JOIN 
+	      (SELECT 
+	        @tempMinute := DATE_SUB(
+	         #{beginOfDate},
+	          INTERVAL 1 HOUR
+	        )) b 
+	      ON 1 = 1 
+	  LIMIT 24) AS a 
+	  LEFT JOIN 
+	    (SELECT COUNT(a.car_num) hoursCount,hours
+		FROM  (SELECT  car_num  ,DATE_FORMAT(create_time, '%H') hours
+			FROM ${dynamicDbname}.`hk_car_pass_records` 
+			WHERE DATE_FORMAT(create_time, '%Y-%m-%d') &gt;=  #{time}  AND pass_type = #{passType} )a GROUP BY hours ) AS b 
+	    ON a.hours = b.hours 
+	ORDER BY a.hours ASC
+  </select>
+  
+  <select id ="selectPostureParkingYearCount"  resultType="CarPosturePakingYearUM">
+    SELECT
+    MONTH(create_time) mon,
+    COUNT(id) monCount
+    FROM 
+         ${dynamicDbname}.`hk_car_pass_records` 
+  WHERE DATE_FORMAT(create_time, '%Y-%m-%d')&gt;=  #{time}  
+  <choose>
+	      		<when test="carType != 3">
+	      		  AND car_type <![CDATA[ <> ]]> 3
+	      		</when>
+	      		<otherwise>
+	      		AND car_type  = 3
+	      		</otherwise>
+ </choose>
+    GROUP BY  MONTH(create_time) ASC;
+  </select>
+  
+ <select id="selectPostureParkingCount"  resultType="CarMonParkCountUM">
+	SELECT DISTINCT 
+	   a.recoedsDay AS day,
+	  CASE
+	    WHEN FLOOR(b.dayCount/#{day}) IS NOT NULL 
+	    THEN FLOOR(b.dayCount/#{day})
+	    ELSE 0 
+	  END AS dayCount 
+	FROM
+	  (SELECT 
+	    DATE_FORMAT(
+	      @tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 DAY),
+	      '%d'
+	    ) AS recoedsDay 
+	  FROM
+	     ${dynamicDbname}.`hk_car_pass_records` 
+	    LEFT JOIN 
+	      (SELECT 
+	        @tempMinute := DATE_SUB(
+	          #{beginOfDate} ,
+	          INTERVAL 1 DAY
+	        )) b 
+	      ON 1 = 1 
+	  LIMIT 31) AS a 
+	  LEFT JOIN 
+	    (SELECT DISTINCT
+	      COUNT(a.car_num) dayCount,
+	      day 
+	    FROM
+	      (SELECT
+	 		car_num,
+	        DATE_FORMAT(create_time, '%d') day
+	      FROM
+	         ${dynamicDbname}.`hk_car_pass_records` 
+	      WHERE DATE_FORMAT(create_time, '%Y-%m-%d')&gt;=  #{time}  
+	      <choose>
+	      		<when test="carType != 3">
+	      		  AND car_type <![CDATA[ <> ]]> 3
+	      		</when>
+	      		<otherwise>
+	      		AND car_type  = 3
+	      		</otherwise>
+	      </choose>
+	      ) a 
+	    GROUP BY day
+	    ) AS b 
+	    ON a.recoedsDay = b.day 
+	WHERE  a.recoedsDay% 2 =1
+	ORDER BY a.recoedsDay ASC 
+  </select>
+  
+  <select id ="selectCarPassCount"  resultType="CarFeelPassHoursCountUM">
+	SELECT 
+	  a.hours,
+	  CASE
+	    WHEN FLOOR(b.hoursCount ) IS NOT NULL 
+	    THEN FLOOR(b.hoursCount )
+	    ELSE 0 
+	  END AS hoursCount 
+	FROM
+	  (SELECT 
+	    DATE_FORMAT(
+	      @tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 HOUR),
+	      '%H'
+	    ) AS hours 
+	  FROM
+	    ${dynamicDbname}.`hk_car_pass_records` 
+	    LEFT JOIN 
+	      (SELECT 
+	        @tempMinute := DATE_SUB(
+	          #{beginOfDate},
+	          INTERVAL 1 HOUR
+	        )) b 
+	      ON 1 = 1 
+	  LIMIT 24) AS a 
+	  LEFT JOIN 
+	    (SELECT COUNT(car_num) hoursCount,DATE_FORMAT(create_time, '%H') hours
+		FROM   ${dynamicDbname}.`hk_car_pass_records`  WHERE DATE_FORMAT(create_time, '%Y-%m-%d') = #{today} 
+		GROUP BY hours ) AS b 
+	    ON a.hours = b.hours 
+	ORDER BY a.hours ASC ;
+  </select>
+  
+  <select id = "selectMonTimeCount"    parameterType="java.util.Map"  resultType="CarMonTimeCountUM">  
+	SELECT 
+	    a.hours,    
+	    CASE
+	        WHEN b.hoursCount IS NOT NULL THEN b.hoursCount
+	        ELSE 0
+	    END AS hoursCount
+	FROM
+	    (SELECT 
+	  DATE_FORMAT(@tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 HOUR), '%H')  AS hours 
+	FROM
+	 ${dynamicDbname}.`hk_car_pass_records` 
+	  LEFT JOIN 
+	    (SELECT 
+	      @tempMinute := DATE_SUB(#{beginOfDate}, INTERVAL 1 HOUR)) b 
+	    ON 1 = 1 
+	LIMIT 24 ) AS a
+	        LEFT JOIN
+	    (SELECT 
+	        DATE_FORMAT(create_time, '%H') hours,
+	        COUNT(DATE_FORMAT(create_time, '%H')) hoursCount,
+	        pass_type passType
+	    FROM
+	       ${dynamicDbname}.`hk_car_pass_records` 
+	    WHERE
+	        pass_type = #{passType}  AND DATE_FORMAT(create_time, '%Y-%m') = #{month} 
+	    GROUP BY hours) AS b ON a.hours = b.hours
+	ORDER BY a.hours ASC;
+  </select>
+  
+    <select id = "selectMonParkingCount"    resultType="CarMonParkCountUM">  
+    SELECT 
+	    a.day,    
+	    CASE
+	        WHEN b.dayCount IS NOT NULL THEN b.dayCount
+	        ELSE 0  END AS dayCount
+	FROM
+	    (SELECT 
+			DATE_FORMAT(@tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 DAY), '%d')  AS day 
+		FROM
+		${dynamicDbname}.`hk_car_pass_records` 
+		LEFT JOIN 
+	    (SELECT  @tempMinute := DATE_SUB(#{monFirstDay}, INTERVAL 1 DAY)) b ON 1 = 1 LIMIT #{curMonDayCount}) AS a
+	LEFT JOIN
+	    (SELECT 
+	        DATE_FORMAT(create_time, '%d') day,
+			COUNT(DATE_FORMAT(create_time, '%d')) dayCount
+	    FROM
+	      ${dynamicDbname}.`hk_car_pass_records` 
+	    WHERE
+	        DATE_FORMAT(create_time, '%Y-%m') = #{month}   AND pass_type =0
+	        <choose>
+ 	             <when test = "carType ==  1 ">
+	                 AND car_type = 3
+	             </when> 
+	             <otherwise>
+		    		 AND car_type <![CDATA[ <> ]]> 3
+		    	</otherwise>   
+	        </choose>
+	    GROUP BY day) AS b ON a.day = b.day
+	where (a.day % 2 =1) 
+	ORDER BY a.day ASC;
+  </select >
+  
+  <select   id = "selectMonEnterCount"    resultType="CarmMonEnterCountUM">
+	  	SELECT 
+	  		b.id,
+		    a.car_num  carNum, 
+		    SUBSTRING(JSON_EXTRACT(b.photo,"$.carImg"), 2, LENGTH(JSON_EXTRACT(b.photo,"$.carImg"))-2) carImg,
+		    count(a.id)  count
+		FROM
+			${dynamicDbname}.`hk_car_pass_records`  a
+		LEFT JOIN  ${dynamicDbname}.`hk_car_str`  b ON a.car_num = b.num
+		WHERE
+		    a.car_type = #{carType}  AND a.pass_type = #{passType}  and DATE_FORMAT(a.create_time, '%Y-%m') = #{month} 
+		group by car_num, b.photo
+		having count(a.id) >= #{maxCount} 
+  </select>
+
+	<select   id = "selectPosAllCarWeekCount"    resultType="CarMonParkCountUM">
+		SELECT
+		DATE_FORMAT( a.date, '%d' ) day,
+		IFNULL( COUNT( b.car_num ), 0 ) dayCount
+		FROM
+		(
+          SELECT @a :=@a + 1 as `index`, DATE(ADDDATE(CURRENT_DATE, INTERVAL @a DAY)) AS `date`
+          FROM mysql.help_topic,(SELECT @a := 0) temp
+          WHERE @a &lt; 6 - WEEKDAY(CURRENT_DATE)
+          UNION
+          SELECT @s :=@s - 1 as `index`, DATE(DATE_SUB(CURRENT_DATE, INTERVAL @s DAY)) AS `date`
+          FROM mysql.help_topic,(SELECT @s := WEEKDAY(CURRENT_DATE) + 1) temp
+          WHERE @s &gt; 0
+          ORDER BY `date`
+        )a
+		LEFT JOIN ${dynamicDbname}.`hk_car_pass_records` b ON DATE_FORMAT( b.create_time, '%d' ) = DATE_FORMAT( a.date, '%d' )
+		GROUP BY DATE_FORMAT( a.date, '%d' )
+		ORDER BY a.date ASC
+  	</select>
+
+	<select   id = "selectPosCarWeekCount"    resultType="CarMonParkCountUM">
+		SELECT
+		DATE_FORMAT( a.date, '%d' ) day,
+		IFNULL( COUNT( b.car_num ), 0 ) dayCount
+		FROM
+		(
+          SELECT @a :=@a + 1 as `index`, DATE(ADDDATE(CURRENT_DATE, INTERVAL @a DAY)) AS `date`
+          FROM mysql.help_topic,(SELECT @a := 0) temp
+          WHERE @a &lt; 6 - WEEKDAY(CURRENT_DATE)
+          UNION
+          SELECT @s :=@s - 1 as `index`, DATE(DATE_SUB(CURRENT_DATE, INTERVAL @s DAY)) AS `date`
+          FROM mysql.help_topic,(SELECT @s := WEEKDAY(CURRENT_DATE) + 1) temp
+          WHERE @s &gt; 0
+          ORDER BY `date`
+        )a
+		LEFT JOIN (SELECT DISTINCT cpr.car_num , DATE_FORMAT( cpr.create_time, '%d' ) date FROM  ${dynamicDbname}.`hk_car_pass_records` cpr ) b
+		ON DATE_FORMAT( a.date, '%d' ) = b.date
+		GROUP BY DATE_FORMAT( a.date, '%d' )
+		ORDER BY a.date ASC
+	</select>
+
+   <insert id="insert" parameterType="CarPassRecordsDM"  keyProperty="id" useGeneratedKeys="true" >
+    insert into ${dynamicDbname}.`hk_car_pass_records`  
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="carType != null">
+        car_type,
+      </if>
+      <if test="passType != null">
+        pass_type,
+      </if>
+      <if test="adress != null">
+        adress,
+      </if>
+      <if test="color!=null">
+      color,
+      </if>
+      <if test="model != null">
+        model,
+      </if>
+     <if test="brand != null">
+        brand,
+      </if>
+      <if test="modelType != null">
+        model_type,
+      </if>
+      <if test="videoCode != null">
+        video_code,
+      </if>
+      <if test="imgPath != null">
+        img_path,
+      </if>
+      <if test="firstImgPath != null">
+        first_img_path,
+      </if>
+      <if test="carNum != null">
+        car_num,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="carType != null">
+        #{carType,jdbcType=BIT},
+      </if>
+      <if test="passType != null">
+        #{passType,jdbcType=BIT},
+      </if>
+      <if test="adress != null">
+        #{adress,jdbcType=VARCHAR},
+      </if>
+      <if test="color != null">
+     	 #{color,jdbcType=VARCHAR},
+      </if>
+      <if test="model != null">
+     	 #{model,jdbcType=VARCHAR},
+      </if>
+      <if test="brand != null">
+     	 #{brand,jdbcType=VARCHAR},
+      </if>
+      <if test="modelType != null">
+     	 #{modelType,jdbcType=VARCHAR},
+      </if>
+      <if test="videoCode != null">
+        #{videoCode,jdbcType=VARCHAR},
+      </if>
+      <if test="imgPath != null">
+        #{imgPath,jdbcType=VARCHAR},
+      </if>
+      <if test="firstImgPath != null">
+        #{firstImgPath,jdbcType=VARCHAR},
+      </if>
+      <if test="carNum != null">
+        #{carNum,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+<!--       <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if> -->
+    </trim>
+  </insert>
+  
+</mapper>

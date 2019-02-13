@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.RoleMapper">
+
+	<insert id="addRole" parameterType="com.hotcomm.community.common.bean.pa.system.RolePA" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO hk_sys_role (role_code, description, role_name, status, level) VALUES (#{roleCode}, #{desc}, #{roleName}, #{status}, #{level})
+	</insert>
+
+	<delete id="delRole" parameterType="java.lang.Integer">
+		DELETE FROM hk_sys_role WHERE id = #{roleId}
+	</delete>
+
+	<update id="updateRole" parameterType="com.hotcomm.community.common.bean.pa.system.RolePA">
+		UPDATE hk_sys_role SET role_code = #{roleCode}, description = #{desc}, role_name = #{roleName}, status = #{status}, level = #{level}
+		WHERE id = #{roleId}
+	</update>
+
+	<select id="getRole" parameterType="java.lang.Integer" resultType="com.hotcomm.community.common.bean.ui.system.RoleUM">
+		SELECT id roleId, role_code roleCode, description, role_name roleName, status, level FROM hk_sys_role WHERE id = #{roleId}
+	</select>
+
+	<select id="queryList" parameterType="java.lang.Integer" resultType="com.hotcomm.community.common.bean.ui.system.RoleUM">
+		SELECT id roleId, role_code roleCode, description, role_name roleName, status, level FROM hk_sys_role
+		<trim prefix="WHERE" prefixOverrides="AND|OR">
+			<if test="level != null">
+				AND level = #{level} AND id != 1
+			</if>
+		</trim>
+	</select>
+
+	<insert id="addRoleResources">
+		INSERT INTO hk_sys_role_resource(role_id, resource_id) VALUES
+		<foreach collection="resourceIds" item="resourceId" index="index" separator=",">
+			(#{roleId}, #{resourceId})
+		</foreach>
+	</insert>
+
+	<delete id="delRoleResources" parameterType="java.lang.Integer">
+		DELETE FROM hk_sys_role_resource WHERE role_id = #{roleId}
+	</delete>
+
+	<select id="getResourceIdsByRoleId" parameterType="java.lang.Integer" resultType="java.lang.String">
+		SELECT IFNULL(GROUP_CONCAT(resource_id SEPARATOR ','), '') resourceIds
+		FROM hk_sys_role_resource WHERE role_id = #{roleId}
+	</select>
+
+	<select id="isRoleUsed" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_user_role WHERE role_id = #{roleId} LIMIT 1
+	</select>
+
+	<select id="isRoleNameExist" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_role WHERE role_name = #{roleName} LIMIT 1
+	</select>
+
+	<select id="isRoleCodeExist" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_role WHERE role_code = #{roleCode} LIMIT 1
+	</select>
+
+	<insert id="addUserRole">
+		INSERT INTO hk_sys_user_role(user_id, role_id) VALUES(#{userId}, #{roleId})
+	</insert>
+
+	<insert id="updateUserRole">
+		UPDATE hk_sys_user_role SET role_id = #{roleId} WHERE user_id = #{userId}
+	</insert>
+
+	<select id="getRoleStatusByUserId" parameterType="java.lang.Integer" resultType="java.lang.Integer">
+		SELECT v2.status FROM hk_sys_user_role v1 INNER JOIN hk_sys_role v2 ON v1.role_id = v2.id WHERE v1.user_id = #{userId}
+	</select>
+
+	<update id="setSessionGroupConcatMaxLen">
+		SET SESSION group_concat_max_len = 102400
+	</update>
+
+</mapper>

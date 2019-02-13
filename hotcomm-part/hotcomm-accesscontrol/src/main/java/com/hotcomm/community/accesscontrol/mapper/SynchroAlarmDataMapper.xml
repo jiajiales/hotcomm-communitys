@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.accesscontrol.mapper.SynchroAlarmDataMapper">
+	<select id="selectDevMac" resultType="java.lang.String">
+		SELECT 
+		  d.`mac` mac 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device d 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_door_control_attribute dc 
+		    ON d.`doorcontrol_attr_id` = dc.`id` 
+		    AND d.`module_id` = 6 
+		    AND dc.`isdelete` = 0 
+		WHERE d.`is_enble` = 1 
+		  AND dc.`install_state` = 1 
+	</select>
+	<select id="selectAlarmState" resultType="com.hotcomm.community.common.bean.db.process.AlarmStateDM">
+		SELECT 
+		  id,
+		  state_name stateName,
+		  module_id moduleId,
+		  is_delete isDelete,
+		  add_time `addTime`, 
+		  `type`,
+		  `level`,
+		  state_type stateType,
+		  match_value matchValue
+		FROM
+		  hotcomm_community.`hk_alarm_state` 
+		WHERE module_id = 6 
+		  AND is_delete = 0 
+	</select>
+	<select id="selectByMac" resultType="com.hotcomm.community.common.bean.ui.device.doorcontrol.DoorDevUM">
+		SELECT 
+		  id,
+		  mac 
+		FROM
+		   ${tableParams.dynamic_dbname}.hk_device 
+		WHERE mac =#{mac}
+	</select>
+</mapper>

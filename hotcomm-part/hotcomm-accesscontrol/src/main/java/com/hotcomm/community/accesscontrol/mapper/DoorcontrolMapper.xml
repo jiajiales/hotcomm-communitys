@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.accesscontrol.mapper.DoorcontrolMapper">
+	<insert id="insertBatch">
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_device (
+		  mac,
+		  dev_type,
+		  dev_num,
+		  dev_trademark,
+		  state,
+		  module_id,
+		  dev_address,
+		  use_type,
+		  doorcontrol_attr_id
+		) 
+		VALUES
+		<foreach collection="params" item="param" separator=",">
+		  (#{param.mac},#{param.devType},#{param.devNum},#{param.devTrademark},
+		  #{param.state},#{param.moduleId},#{param.devAddress},#{param.useType},#{param.doorcontrolAttrId})
+		</foreach>
+	</insert>
+	<update id="updateBatch">
+		<foreach collection="params" item="param">
+			UPDATE 
+			  ${tableParams.dynamic_dbname}.hk_device 
+			SET
+			  sate = #{param.state} 
+			WHERE mac =#{param.mac}
+		</foreach>
+	</update>
+	<update id="delBatch">
+		UPDATE 
+		  ${tableParams.dynamic_dbname}.hk_device 
+		SET
+		  is_enble = 0
+		WHERE mac in
+		<foreach collection="params" item="param" open="(" separator="," close=")">
+			#{param}
+		</foreach>
+	</update>
+	<select id="selectDevMac" resultType="java.lang.String">
+		SELECT 
+		  mac	 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device 
+		WHERE is_enble = 1 
+		AND module_id=6
+	</select>
+</mapper>

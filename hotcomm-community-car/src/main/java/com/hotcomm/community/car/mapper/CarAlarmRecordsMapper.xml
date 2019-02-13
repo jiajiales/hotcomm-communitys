@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.car.mapper.CarAlarmRecordsMapper">
+
+<!-- <select id="pagelist"  resultType="CarAlarmRecordsUM">
+		 SELECT 
+		 a.id,
+		CONCAT(b.name," ",a.num) alarmContent,
+		b.alarm_leve alarmLeve,
+		a.address,
+		DATE_FORMAT(a.create_time,'%Y-%m-%d %H:%i') createTime
+		 FROM ${pa.dynamic_dbname}.`hk_car_alarm_records`  a
+		 LEFT JOIN ${pa.dynamic_dbname}.`hk_car_alarm_rule` b ON a.rule_id  = b.rule_id
+		 WHERE 1=1
+		 <if test="pa.num !=null and  pa.num !=''">
+			and a.num = #{pa.num}
+		</if> 
+		<if test="pa.startTime !=null and  pa.startTime != '' ">
+			and a.create_time >=  #{pa.startTime}
+		</if>
+		<if test="pa.endTime !=null and  pa.endTime != '' ">
+			and #{pa.endTime} >= a.create_time
+		</if>
+ 		 ORDER BY a.create_time DESC
+</select> -->
+
+	<select id="detail"  resultType="CarAlarmRecordsUM">
+			  SELECT  
+			  a.id,
+			  a.num,
+			  a.mac,
+			  a.address,
+			  a.photo,
+			  DATE_FORMAT(a.create_time,'%Y-%m-%d %T') createTime,
+			  a.type,
+			  b.name alarmName,
+			  b.alarm_leve alarmLeve  
+			 FROM ${dynamicDbname}.`hk_car_alarm_records`  a
+			 LEFT JOIN ${dynamicDbname}.`hk_car_alarm_rule` b ON a.rule_id  = b.rule_id
+	 		 WHERE a.id = #{id,jdbcType=INTEGER} AND b.state = 0
+	</select>
+
+  <delete id="delete" parameterType="java.util.Map">
+    delete from  ${dynamicDbname}.`hk_car_alarm_records` 
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+    <select id = "selectAlarmDayCount"    resultType="CarAlarmDayUM">
+    SELECT 
+    distinct
+	    a.alarmDay,    
+	    CASE
+	        WHEN b.dayCount IS NOT NULL THEN b.dayCount
+	        ELSE 0
+	    END AS dayCount
+	FROM
+	    (SELECT 
+			DATE_FORMAT(@tempMinute := DATE_ADD(@tempMinute, INTERVAL 1 DAY), '%d')  AS alarmDay 
+		FROM
+		${dynamicDbname}.`hk_car_alarm_records`
+		LEFT JOIN 
+	    (SELECT  @tempMinute := DATE_SUB(#{monFirstDay}, INTERVAL 1 DAY)) b ON 1 = 1 LIMIT  #{monDayCount} ) AS a
+	LEFT JOIN
+	    (SELECT 
+	        DATE_FORMAT(create_time, '%d') day,
+			COUNT(id) dayCount
+	    FROM
+	      ${dynamicDbname}.`hk_car_alarm_records`
+	    WHERE
+	        DATE_FORMAT(create_time, '%Y-%m') =  #{month} 
+	    GROUP BY day) AS b ON a.alarmDay = b.day
+	ORDER BY a.alarmDay  ASC LIMIT    #{limitDay}  ;
+  </select>
+  
+<select id = "selectMonthCount"    resultType="java.lang.Integer">
+	  SELECT		COUNT(1) 	FROM	${dynamicDbname}.`hk_car_alarm_records`  	WHERE	1=1
+	  <if test="month !=null">
+	 	AND  DATE_FORMAT(create_time, '%Y-%m') = #{month}
+	  </if>
+	  <if test="weekStart !=null">
+	  	AND  create_time >=  #{weekStart}
+	  </if>
+  </select>
+  
+ <select id = "selectFeelAlarmTypeCount"    resultType="CarFeelAlarmTypeCountUM">
+	SELECT	  a.name labelName, COUNT(b.num)  numCount
+	FROM ${dynamicDbname}.`hk_car_alarm_rule`   a
+	LEFT JOIN ${dynamicDbname}.`hk_car_alarm_records`   b ON b.rule_id = a.rule_id
+	WHERE  DATE_FORMAT(b.create_time, '%Y-%m-%d') =#{today}  AND a.rule_id = #{ruleId}
+	GROUP BY  a.name
+  </select>
+  
+  <select id= "selectAlarmList"  resultType="CarAlarmListUM" >
+  SELECT a.id,a.photo,a.num, a.address,b.alarm_leve alaemLeve,b.name alarmName
+  FROM  ${dynamicDbname}.`hk_car_alarm_records` a 
+  LEFT JOIN  ${dynamicDbname}.`hk_car_alarm_rule` b ON  a.rule_id = b.rule_id
+  WHERE DATE_FORMAT(a.create_time, '%Y-%m-%d %T') &gt;=  #{weekStart}
+  </select>
+  
+    <select id = "selectAlarmLevelCount"     resultType="CarAlarmLevelCountUM">
+    SELECT
+		 (CASE
+		      a.alarm_leve WHEN 1 THEN  '1级警报' 
+		      WHEN 2  THEN  '2级警报' 
+		      ELSE '3级警报'  END
+		 ) alarmLeve ,
+		(CASE WHEN b.COUNT IS NOT NULL THEN b.COUNT ELSE 0 END) COUNT
+	FROM (
+		SELECT  DISTINCT a.alarm_leve  
+		FROM ${dynamicDbname}.`hk_car_alarm_rule` a  ORDER BY a.alarm_leve ASC ) a
+		LEFT JOIN (SELECT   b.alarm_leve alarmLeve ,  COUNT(b.alarm_leve) COUNT
+		FROM  ${dynamicDbname}.`hk_car_alarm_records` a 
+    INNER JOIN ${dynamicDbname}.`hk_car_alarm_rule` b  ON a.rule_id = b.rule_id 
+	WHERE 1=1
+	<if test="month!=null">
+	  		AND DATE_FORMAT(a.create_time, '%Y-%m') = #{month} 
+	  </if>
+	  <if test="time!=null">
+	  		AND DATE_FORMAT(a.create_time, '%Y-%m-%d') &gt;=  #{time}
+	  </if>
+	GROUP BY alarmLeve,b.alarm_leve ) b ON b.alarmLeve =a.alarm_leve
+  </select>
+  
+ <insert id="insert" parameterType="CarAlarmRecordsDM" keyProperty="id" useGeneratedKeys="true">
+    insert into  ${dynamicDbname}.`hk_car_alarm_records` 
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="num != null">
+        num,
+      </if>
+      <if test="type != null">
+        type,
+      </if>
+      <if test="ruleId != null">
+        rule_id,
+      </if>
+      <if test="address != null">
+        address,
+      </if>
+      <if test="mac != null">
+        mac,
+      </if>
+      <if test="photo != null">
+        photo,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="num != null">
+        #{num,jdbcType=VARCHAR},
+      </if>
+      <if test="type != null">
+        #{type,jdbcType=TINYINT},
+      </if>
+      <if test="ruleId != null">
+        #{ruleId,jdbcType=INTEGER},
+      </if>
+      <if test="address != null">
+        #{address,jdbcType=VARCHAR},
+      </if>
+      <if test="mac != null">
+        #{mac,jdbcType=VARCHAR},
+      </if>
+      <if test="photo != null">
+        #{photo,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  
+  <update id="update" parameterType="CarAlarmRecordsDM">
+    update  ${dynamicDbname}.`hk_car_alarm_records` 
+    <set>
+      <if test="num != null">
+        num = #{num,jdbcType=VARCHAR},
+      </if>
+      <if test="type != null">
+        type = #{type,jdbcType=TINYINT},
+      </if>
+      <if test="ruleId != null">
+        rule_id = #{ruleId,jdbcType=INTEGER},
+      </if>
+      <if test="address != null">
+        address = #{address,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+</mapper>

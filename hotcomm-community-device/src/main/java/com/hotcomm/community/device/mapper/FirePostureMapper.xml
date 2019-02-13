@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.device.mapper.FirePostureMapper">
+
+	<select id="FireAlarmType" resultType="com.hotcomm.community.common.bean.db.device.FireAlarmTypeDM">
+		SELECT COUNT(a.id) fireAlarmNum, 
+		(SELECT COUNT(id) FROM ${tableParams.dynamic_dbname}.`hk_alarm` WHERE `alarm_type` = 1 
+		 AND DATE_FORMAT( `create_time`, '%Y%m') = DATE_FORMAT( NOW() , '%Y%m')) alarmNum
+		FROM ${tableParams.dynamic_dbname}.`hk_alarm` a
+		LEFT JOIN ${tableParams.base_dbname}.`hk_device_type` t ON t.`use_id` = 1
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`use_type` = 1
+		WHERE a.`alarm_type` = 1 
+		AND DATE_FORMAT( a.`create_time`, '%Y%m') = DATE_FORMAT( NOW() , '%Y%m') 
+		AND a.`alarm_source_type` = t.`alarm_id` AND d.`id` = a.`alarm_source_id`
+	</select>
+
+	<select id="FireDeviceYearMsg" resultType="com.hotcomm.community.common.bean.db.device.FireDeviceYearMsgDM">
+		SELECT m.`module_name` moduleName, m.id moduleId ,
+		COUNT(CASE WHEN d.`install_time` &lt; DATE_SUB(NOW(),INTERVAL 1 YEAR) THEN d.`id` END) lastYearNum, 
+		COUNT(d.`id`) nowYearNum
+		FROM ${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`use_type` = 1 AND d.`is_enble` = 1 AND d.`module_id` = m.`id`
+		WHERE m.`is_enble` = 1
+		GROUP BY m.`id`
+	</select>
+	
+	<select id="FireAlaemDisposeMsg" resultType="com.hotcomm.community.common.bean.ui.device.posture.FireAlaemDisposeMsgUM">
+		SELECT COUNT(CASE WHEN a.`handel_state` = 0 THEN a.`id` END) untreated,
+			COUNT(CASE WHEN a.`handel_state` = 1 OR a.`handel_state` = 3 THEN a.`id` END) processedIng,
+			COUNT(CASE WHEN a.`handel_state` = 2 OR a.`handel_state` = 4 OR a.`handel_state` = 5 THEN a.`id` END) processed
+		FROM ${tableParams.base_dbname}.`hk_device_type` t
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.`alarm_type` = 1 AND a.`alarm_source_type` = t.`alarm_id` AND DATE_FORMAT(a.`create_time`,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`use_type` = 1
+		WHERE t.`use_id` = 1 AND d.`id` = a.`alarm_source_id`
+	</select>
+	
+	<select id="FireAlarmToMonth" resultType="com.hotcomm.community.common.bean.ui.device.posture.FireAlarmToMonthUM">
+		SELECT DATE_FORMAT(a.`create_time`,'%e') `day`, COUNT(a.`id`) alarmNum
+		FROM ${tableParams.base_dbname}.`hk_device_type` t
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`is_enble` = 1 AND d.`use_type` = 1
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.`alarm_source` = d.`mac`
+		 AND DATE_FORMAT(a.`create_time`,'%Y-%m') = 
+		<if test="year=='now'.toString()"> DATE_FORMAT(NOW(),'%Y-%m')</if>
+		<if test="year=='last'.toString()"> DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR) , '%Y-%m')</if>
+		WHERE t.`use_id` = 1 AND a.`alarm_source_type` = t.`alarm_id`
+		GROUP BY DATE_FORMAT(a.`create_time`,'%Y-%m-%d')
+		ORDER BY `day` ASC
+	</select>
+	
+	<select id="FireAlarmToYear" resultType="com.hotcomm.community.common.bean.ui.device.posture.FireAlarmToYearUM">
+		SELECT DATE_FORMAT(a.`create_time`,'%m') `month` , COUNT(a.`id`) alarmNum
+		FROM ${tableParams.base_dbname}.`hk_device_type` t
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`is_enble` = 1 AND d.`use_type` = 1
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.`alarm_source` = d.`mac`
+			AND DATE_FORMAT(a.`create_time`,'%Y') = 
+				<!-- 今年 -->
+				<if test="year=='now'.toString()"> DATE_FORMAT(NOW(),'%Y')</if>
+				<!-- 去年 -->
+				<if test="year=='last'.toString()"> DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 YEAR),'%Y')</if>
+				<!-- 前年 -->
+				<if test="year=='next'.toString()"> DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 2 YEAR),'%Y')</if>
+		WHERE t.`use_id` = 1 AND a.`alarm_source_type` = t.`alarm_id`
+		GROUP BY DATE_FORMAT(a.`create_time`,'%Y-%m')
+		ORDER BY `month` ASC
+	</select>
+	
+</mapper>

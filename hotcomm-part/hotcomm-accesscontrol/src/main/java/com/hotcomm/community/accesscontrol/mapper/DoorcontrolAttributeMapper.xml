@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.4//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.accesscontrol.mapper.DoorcontrolAttributeMapper">
+	<!--添加门禁属性 -->
+	<insert id="insertBatch" useGeneratedKeys="true" keyProperty="id" >
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_door_control_attribute (
+		  guid,
+		  faceCaptureOnOff,
+		  faceDetectSupport,
+		  faceOpenDoorOnOff,
+		  isDoorLock
+		) 
+		VALUES
+		<foreach collection="list" item="param" index="index" separator="," >
+		 (#{param.guid},#{param.faceCaptureOnOff},#{param.faceDetectSupport}, #{param.faceOpenDoorOnOff},#{param.isDoorLock})
+		</foreach>
+	</insert>
+	<update id="updateBatch">
+		<foreach collection="params" item="param" separator=",">
+		 	UPDATE 
+			  ${tableParams.dynamic_dbname}.hk_door_control_attribute 
+			SET
+			<if test="param.faceCaptureOnOff!=null and param.faceCaptureOnOff!=''">
+				faceCaptureOnOff =#{param.faceCaptureOnOff},
+			</if>
+			<if test="param.faceDetectSupport!=null and param.faceDetectSupport!=''">
+				faceDetectSupport =#{param.faceDetectSupport},
+			</if>
+			<if test="param.faceOpenDoorOnOff!=null and param.faceOpenDoorOnOff!=''">
+				faceOpenDoorOnOff =#{param.faceOpenDoorOnOff},
+			</if>
+			<if test="param.isDoorLock!=null and param.isDoorLock!=''">
+				isDoorLock =#{param.isDoorLock},
+			</if>
+			  update_time = NOW() 
+			WHERE guid =#{param.guid}
+		</foreach>
+	</update>
+	<update id="delBatch">
+		UPDATE 
+			  ${tableParams.dynamic_dbname}.hk_door_control_attribute 
+			SET
+			  isdelete=1
+			WHERE guid in
+		<foreach collection="params" item="param" open="(" separator="," close=")">
+			#{param}
+		</foreach>
+	</update>
+	<select id="selectDevMac" resultType="java.lang.String">
+		SELECT 
+		  guid
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_door_control_attribute 
+		WHERE isdelete = 0 
+	</select>
+</mapper>

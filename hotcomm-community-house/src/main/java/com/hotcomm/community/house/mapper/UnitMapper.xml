@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.house.mapper.UnitMapper">
+	<select id="page" resultType="com.hotcomm.community.common.bean.ui.house.UnitUM">
+		SELECT 
+		  u.`id`,
+		  u.`building_id` buildingId,
+		  b.`building_name` buildingName,
+		  u.`unit_no` unitNo,
+		  u.`unit_name` unitName,
+		  u.`create_time` createTime,
+		  u.`create_user` createUser 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_unit u 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b 
+		    ON u.`building_id` = b.`id` 
+		    AND b.`isdelete` = 0 
+		WHERE u.`isdelete` = 0 
+		<if test="params.buildingId!=null and params.buildingId!=''">
+		  AND u.`building_id` = #{params.buildingId} 
+		</if>
+		<if test="params.startTime!=null and params.startTime!=''">
+			AND DATE(u.`create_time`)&lt;= #{params.startTime} 
+		</if>
+		<if test="params.endTime!=null and params.endTime!=''">
+			AND DATE(u.`create_time`)&gt;= #{params.endTime} 
+		</if>
+		<if test="params.content!=null and params.content!=''">
+		  AND CONCAT_WS(
+		    ',',
+		    u.`unit_no`,
+		    u.`unit_name`,
+		    b.`building_name`
+		  ) LIKE CONCAT('%', #{params.content}, '%')
+		</if>
+		ORDER BY u.`create_time` DESC
+	</select>
+	<select id="dataList" resultType="com.hotcomm.community.common.bean.ui.house.UnitUM">
+		SELECT 
+		  u.`id`,
+		  u.`building_id` buildingId,
+		  b.`building_name` buildingName,
+		  u.`unit_no` unitNo,
+		  u.`unit_name` unitName,
+		  u.`create_time` createTime,
+		  u.`create_user` createUser 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_unit u 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b 
+		    ON u.`building_id` = b.`id` 
+		    AND b.`isdelete` = 0 
+		WHERE u.`isdelete` = 0 
+		AND u.`building_id` = #{tableParams.buildingId} 
+	</select>
+	<select id="detailsData" resultType="com.hotcomm.community.common.bean.ui.house.UnitUM">
+		SELECT 
+		  u.`id`,
+		  u.`building_id` buildingId,
+		  b.`building_name` buildingName,
+		  u.`unit_no` unitNo,
+		  u.`unit_name` unitName,
+		  u.`create_time` createTime,
+		  u.`create_user` createUser 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_unit u 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b 
+		    ON u.`building_id` = b.`id` 
+		    AND b.`isdelete` = 0 
+		WHERE u.`isdelete` = 0 
+		AND u.`id` = #{tableParams.id}
+	</select>
+	<select id="isExist" resultType="java.lang.Integer">
+		SELECT 
+		  COUNT(id) 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_unit 
+		WHERE building_id = #{tableParams.buildingId} 
+		  AND unit_no =#{tableParams.unitNo}
+		  <if test="tableParams.id!=null and tableParams.id!=''">
+		  	AND id!=#{tableParams.id}
+		  </if>
+		  AND isdelete=0
+	</select>
+	<select id="isExistRelation" resultType="java.lang.Integer">
+		SELECT 
+		  COUNT(id) 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_floors 
+		WHERE unit_id = #{tableParams.id} 
+		  AND isdelete = 0 
+	</select>
+	<select id="queryDoorduBuildingId" resultType="java.lang.Integer">
+		SELECT 
+		  doordu_building_id 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_building 
+		WHERE id = #{tableParams.buildingId} 
+	</select>
+	<insert id="addData" useGeneratedKeys="true" keyProperty="params.id">
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_unit (
+			building_id,
+			unit_no,
+			unit_name,
+			create_time,
+			create_user
+		)
+		VALUES
+		(#{params.buildingId},#{params.unitNo},#{params.unitName},NOW(),#{params.createUser})
+	</insert>
+	<update id="updateData">
+		UPDATE 
+		  ${tableParams.dynamic_dbname}.hk_unit 
+		SET
+		<if test="params.buildingId!=null and params.buildingId!=''">
+			building_id =#{params.buildingId},		
+		</if>
+		<if test="params.unitNo!=null and params.unitNo!=''">
+			unit_no =#{params.unitNo},		
+		</if>
+		<if test="params.unitName!=null and params.unitName!=''">
+			unit_name =#{params.unitName},		
+		</if>
+			update_time =NOW() 
+		WHERE id = #{params.id} 
+	</update>
+	<update id="updateDoorduUnitId">
+		UPDATE 
+		  ${tableParams.dynamic_dbname}.hk_unit 
+		SET
+		  doordu_unit_id=#{tableParams.doorduUnitId}
+		WHERE id = #{tableParams.id} 
+	</update>
+	<update id="delData">
+		UPDATE 
+		  ${tableParams.dynamic_dbname}.hk_unit 
+		SET
+		  isdelete = 1 
+		WHERE id = #{tableParams.id} 
+	</update>
+</mapper>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.DictionaryMapper">
+
+	<select id="getDictionary" resultType="com.hotcomm.community.common.bean.ui.system.DictionaryUM">
+		SELECT id, key_name keyName, key_value keyValue FROM hk_diction
+		<where>
+			TYPE = #{dictionaryPA.type}
+			<if test="dictionaryPA.keyName != null and dictionaryPA.keyName != ''">
+				AND key_name = #{dictionaryPA.keyName}
+			</if>
+		</where>
+	</select>
+
+	<select id="getDictionaryListByType" resultType="com.hotcomm.community.common.bean.db.system.DictionaryDM">
+		SELECT id, key_name keyName, key_value keyValue FROM hk_diction WHERE TYPE = #{type}
+	</select>
+
+</mapper>

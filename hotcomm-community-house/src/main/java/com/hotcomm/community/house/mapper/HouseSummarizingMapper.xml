@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.house.mapper.HouseSummarizingMapper">
+	<select id="getHouseStatistics" resultType="HouseStatistics">
+		<!-- SELECT * FROM
+		(
+		(SELECT COUNT(id) AS buildingNum FROM
+		${tableParams.dynamic_dbname}.hk_building ) bb,
+		(SELECT
+		SUM(construct_area) AS totalConstructArea FROM
+		${tableParams.dynamic_dbname}.hk_floors) ff,
+		(SELECT SUM(CASE WHEN
+		attribute=2 THEN 1 ELSE 0 END) AS roomNum, SUM(CASE WHEN
+		rent_or_sale=1 THEN 1 ELSE 0 END) AS rentRoomNum FROM
+		${tableParams.dynamic_dbname}.hk_room) rr,
+		(SELECT SUM(CASE WHEN ways=1
+		THEN 1 ELSE 0 END) AS dangerPlace,SUM(CASE WHEN ways=2 THEN 1 ELSE 0
+		END) AS servicePlace FROM
+		${tableParams.dynamic_dbname}.hk_watch_place) wp
+		) -->
+		SELECT
+			 ww.buildingNum,
+			 IF(ww.buildingRate IS NULL,0,ww.buildingRate) buildingRate,
+			 ww.totalConstructArea,
+			 IF(ww.totalAreaRate IS NULL,0,ww.totalAreaRate) totalAreaRate,
+			 ww.roomNUm,
+			 IF(ww.roomNumRate IS NULL,0,ww.roomNumRate) roomNumRate,
+			 ww.rentRoomNum,
+			 IF(ww.renRoomNumRate IS NULL,0,ww.renRoomNumRate) renRoomNumRate,
+			 ww.dangerPlace,
+			 ww.servicePlace
+		FROM(
+		SELECT 
+		qq.buildingNum,(qq.nowBuildingNum-qq.lastBuildingNum)/qq.lastBuildingNum AS buildingRate,
+		qq.totalConstructArea,(qq.totalConstructArea-qq.lastTotalConstructArea)/qq.lastTotalConstructArea AS totalAreaRate,
+		qq.roomNUm,(qq.roomNUm-qq.lastRoomNum)/qq.lastRoomNum AS roomNumRate,
+		qq.rentRoomNum,(qq.rentRoomNum-qq.lastRentRoomNum)/qq.lastRentRoomNum AS renRoomNumRate,
+		qq.dangerPlace,qq.servicePlace
+		 FROM (
+		
+		SELECT 
+		  * 
+		FROM
+		  (
+		    (
+		SELECT 
+		  count(DISTINCT id) buildingNum,
+		  SUM(IF(YEAR(create_time) = YEAR(NOW()), 1, 0)) AS nowBuildingNum,
+		  SUM(IF(YEAR(create_time) = YEAR(DATE_ADD(NOW(), INTERVAL - 1 YEAR)),1,0)) AS lastBuildingNum 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_building WHERE isdelete=0) bb,
+		    (SELECT 
+		      SUM(IF(YEAR(create_time) = YEAR(NOW()),construct_area,0)) AS totalConstructArea,
+		      SUM(IF(YEAR(create_time) = YEAR(DATE_ADD(NOW(), INTERVAL - 1 YEAR)),construct_area,0)) lastTotalConstructArea 
+		    FROM
+		      ${tableParams.dynamic_dbname}.hk_floors WHERE isdelete=0) ff,
+		    (SELECT 
+		      SUM(IF(attribute = 2 AND YEAR(create_time)=YEAR(NOW()),1,0)) AS roomNum, 
+		      SUM(IF(attribute = 2 AND YEAR(create_time) = YEAR(DATE_ADD(NOW(), INTERVAL - 1 YEAR)),1,0)) AS lastRoomNum,
+		      SUM(IF(rent_or_sale = 1 AND YEAR(create_time)=YEAR(NOW()),1,0)) AS rentRoomNum,
+		      SUM(IF(rent_or_sale = 1 AND YEAR(create_time) = YEAR(DATE_ADD(NOW(), INTERVAL - 1 YEAR)) ,1,0)) AS lastRentRoomNum 
+		       
+		    FROM
+		      ${tableParams.dynamic_dbname}.hk_room WHERE isdelete=0) rr,
+		    (SELECT 
+		      SUM(
+		        CASE
+		          WHEN ways = 1 
+		          THEN 1 
+		          ELSE 0 
+		        END) AS dangerPlace,
+		      SUM(
+		        CASE
+		          WHEN ways = 2 
+		          THEN 1 
+		          ELSE 0 
+		        END) AS servicePlace 
+		    FROM
+		      ${tableParams.dynamic_dbname}.hk_watch_place WHERE isdelete=0) wp
+		  )
+		  ) qq
+		  )ww
+	</select>
+	<select id="getBuildingStatistics" resultType="BuildingStatistics">
+		SELECT
+		d.`key_value` attribute,
+		SUM(
+		CASE
+		WHEN b.`attribute` = d.id
+		THEN 1
+		ELSE 0
+		END
+		) AS
+		buildingNum,
+		FORMAT(
+		SUM(
+		CASE
+		WHEN b.`attribute` = d.id
+		THEN 1
+		ELSE 0
+		END
+		) /
+		(SELECT
+		COUNT(id)
+		FROM
+		${tableParams.dynamic_dbname}.`hk_building` WHERE isdelete=0),
+		3
+		) AS
+		ratio
+		FROM
+		hotcomm_community.`hk_diction` d
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_building` b
+		ON b.`attribute` = d.`id`
+		AND b.`isdelete` = 0
+		WHERE d.`TYPE` = 'H01'
+		GROUP BY d.`id`
+	</select>
+	<select id="getPlaceStatistics" resultType="PlaceStatistics">
+		SELECT
+		d.`key_value`
+		placeType,
+		SUM(
+		CASE
+		WHEN w.`place_type` = d.`id`
+		THEN 1
+		ELSE 0
+		END
+		)
+		placeNum,
+		FORMAT(
+		SUM(
+		CASE
+		WHEN w.`place_type` = d.`id`
+		THEN 1
+		ELSE 0
+		END
+		) /
+		(SELECT
+		COUNT(id)
+		FROM
+		${ tableParams.dynamic_dbname } .`hk_watch_place`
+		WHERE ways = #{tableParams.ways} AND `isdelete`=0),
+		3
+		) ratio
+		FROM
+		hotcomm_community.`hk_diction` d
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_watch_place` w
+		ON w.`place_type`
+		=d.`id`
+		AND w.`isdelete` = 0
+		WHERE d.`TYPE` = #{tableParams.type}
+		GROUP
+		BY
+		d.`id`
+	</select>
+	<select id="getPlaceNumData" resultType="PlaceNumData">
+		SELECT
+		IF(ways=1,'隐患场所','服务场所') ways,
+		COUNT(ways) placeNum
+		FROM
+		${tableParams.dynamic_dbname}.hk_watch_place WHERE `isdelete`=0
+		GROUP BY ways
+	</select>
+	<select id="getData" resultType="java.util.Map">
+		SELECT
+		COUNT(DISTINCT r.id)
+		totalRoom,
+		COUNT(DISTINCT pr.`room_id`) rentRoom
+		FROM
+		${tableParams.dynamic_dbname}.hk_room r
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_person_room pr
+		ON pr.`room_id` =
+		r.`id` AND pr.`isdelete`=0
+		WHERE r.`rent_or_sale` = 1 AND r.`isdelete`=0
+	</select>
+	<select id="getRentSaleRoom" resultType="RentSaleRoom">
+		SELECT
+		rs.rent_or_sale rentOrSale,
+		COUNT(r.rent_or_sale) roomNum,
+		FORMAT(
+		COUNT(r.rent_or_sale) /
+		(SELECT
+		COUNT(id)
+		FROM
+		${tableParams.dynamic_dbname}.hk_room
+		WHERE attribute = 2 AND isdelete=0) ,
+		3
+		) ratio
+		FROM
+		${tableParams.dynamic_dbname}.hk_room r
+		RIGHT JOIN
+		(SELECT
+		1 rent_or_sale
+		UNION
+		SELECT
+		2 rent_or_sale) rs
+		ON rs.rent_or_sale = r.`rent_or_sale`
+		WHERE r.attribute = 2 AND r.`isdelete`=0
+		GROUP BY rs.rent_or_sale
+	</select>
+</mapper>

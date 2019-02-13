@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.accesscontrol.mapper.SynchroDoorRecordMapper">
+	<select id="queryLogId" resultType="java.lang.Integer">
+		SELECT 
+		  doordu_log_id doorduLogId 
+		FROM
+		   ${tableParams.dynamic_dbname}.hk_person_record 
+		WHERE doordu_log_id IS NOT NULL
+	</select>
+	<select id="queryAddrByMac" resultType="java.util.Map">
+		SELECT 
+		  dev_address devAddress,
+		  lat lat,
+		  lon lon
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device 
+		WHERE mac =#{tableParams.mac}
+	</select>
+	<insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_person_record (
+		  p_id,
+		  record_time,
+		  record_address,
+		  lable_id,
+		  imgs,
+		  video,
+		  record_type,
+		  device_code,
+		  doordu_log_id,
+		  open_style_name
+		) 
+		VALUES
+		<foreach collection="list" item="param" separator=",">
+		  (#{param.pId},#{param.recordTime},#{param.recordAddress},#{param.lableId},
+		  #{param.imgs},#{param.video},#{param.recordType},#{param.deviceCode},#{param.doorduLogId},#{param.openStyleName})
+		</foreach>
+	</insert>
+</mapper>

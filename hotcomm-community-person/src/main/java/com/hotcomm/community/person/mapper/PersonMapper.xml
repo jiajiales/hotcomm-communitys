@@ -1,0 +1,984 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.person.mapper.PersonMapper">
+	<select id="getTotalNumberOfPass" resultType="int">
+		SELECT 
+		  IFNULL(COUNT(a.num),0) num
+		FROM
+		  (SELECT 
+		    IFNULL(COUNT(record.`uid`),0) num 
+		   FROM
+		     ${params.dynamic_dbname}.`hk_person_record` record 
+		   WHERE DATE_FORMAT(record.`record_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d') 
+		     AND record.isdelete=0
+		   GROUP BY record.`p_id`,record.face_no) a
+	</select>
+	<select id="getTotalTimeOfPass" resultType="int">
+		SELECT 
+		  IFNULL(COUNT(record.uid),0) num
+		FROM
+		   ${params.dynamic_dbname}.`hk_person_record` record 
+		WHERE DATE_FORMAT(record.`record_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d')
+		  AND record.isdelete=0
+	</select>
+
+    <select id="getTotalTimeOfPassAll" resultType="int">
+		SELECT
+		  IFNULL(COUNT(record.uid),0) num
+		FROM
+		   ${params.dynamic_dbname}.`hk_person_record` record
+		WHERE  record.isdelete=0
+	</select>
+
+
+	<select id="getStrangerNum" resultType="int">
+		SELECT
+			IFNULL(SUM(IF(stranger.yun_no is not null,1,0)),0)
+		FROM
+			${params.dynamic_dbname}.hk_person_stranger stranger
+		
+	</select>
+	<select id="getLablePopulation" resultType="int">
+		SELECT 
+			IFNULL(COUNT(person.`p_id`),0) AS num
+		FROM 
+			${params.dynamic_dbname}.hk_person person
+		LEFT JOIN 
+			${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id`
+		WHERE 
+			person.`isdelete`=0 AND lable.`type_code`=#{lableType}
+	</select>
+	<select id="getAlarmOfTimeToMonth" resultType="int">
+		SELECT 
+			IFNULL(COUNT(alarm.`id`),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_population_alarm alarm
+		WHERE 
+			alarm.`isdelete`=0 AND MONTH(alarm.`create_time`) = MONTH(NOW())
+		
+	</select>
+	<select id="personClassification" resultType="int">
+		SELECT 
+			IFNULL(COUNT(person.p_id),0) num 
+		FROM
+			${params.dynamic_dbname}.hk_person person
+        LEFT JOIN
+            ${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id`
+		<where> 
+			person.`isdelete` = 0
+			AND data_type=1
+			AND lable.`type_code` !='F04'
+			<!-- 小孩 --> 
+			<if test="type==1">
+				AND	person.`age`&lt;18
+			</if>
+			<!-- 劳动人员 -->
+			<if test="type==2">
+				AND	person.`age`&gt;17 AND person.`age`&lt;56
+			</if>
+			<!-- 老人 -->
+			<if test="type==3">
+				AND	person.`age`&gt;55
+			</if>
+			<!-- 本地户口 -->
+			<if test="kosekiType==0">
+				AND person.`koseki`=0
+			</if>
+			<!-- 非本地户口 -->
+			<if test="kosekiType==1">
+				AND person.`koseki`=1
+			</if>
+		</where>
+	</select>
+	<select id="getPersonAlarmByLevel" resultType="PersonAlarmByLevelDM">
+		SELECT 
+			IFNULL(MONTH(alarm.`create_time`),0) mon,
+			IFNULL(SUM(CASE WHEN alarm.`alarm_level`=1 THEN 1 ELSE 0 END),0) Lv1num ,
+			IFNULL(SUM(CASE WHEN alarm.`alarm_level`=2 THEN 1 ELSE 0 END),0) Lv2num ,
+			IFNULL(SUM(CASE WHEN alarm.`alarm_level`=3 THEN 1 ELSE 0 END),0) Lv3num 
+		
+		FROM
+			${params.dynamic_dbname}.hk_population_alarm alarm 
+		WHERE 
+			alarm.isdelete = 0 
+		GROUP BY MONTH(alarm.`create_time`) 
+		ORDER BY MONTH(alarm.`create_time`) ASC 
+	</select>
+	<select id="getAlarmOfTypeToMonth" resultType="PersonAlarmTypeDM">
+		SELECT 
+			IFNULL(SUM(CASE WHEN lable.`type_code`='F01' THEN 1 ELSE 0 END),0) carenum,
+			IFNULL(SUM(CASE WHEN lable.`type_code`='F02' THEN 1 ELSE 0 END),0) risknum,
+			IFNULL(SUM(CASE WHEN lable.`type_code`='F04' THEN 1 ELSE 0 END),0) blacknum
+		FROM 
+			${params.dynamic_dbname}.hk_population_alarm alarm
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_person_lable lable ON lable.`id`=alarm.`lable_id`
+		WHERE 
+			alarm.`isdelete`=0 AND MONTH(alarm.`create_time`)= MONTH(NOW())
+	</select>
+	
+	<!-- 24小时通行人数 -->
+	<select id="getPassInfoOfdayByNum" resultType="PassInfoOfDayDM">
+		SELECT 
+			DATE_FORMAT(a.record_time,'%H') h,IFNULL(COUNT(a.record_time),0) num
+		FROM(
+			SELECT 
+				record.`record_time`,record.`p_id`
+			FROM 
+				${params.dynamic_dbname}.hk_person_record record
+			WHERE 
+				record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y-%m-%d')=DATE_FORMAT(NOW(),'%y-%m-%d')
+				<if test="type==1">
+					AND record.record_type=1
+				</if>
+			GROUP BY DATE_FORMAT(record.`record_time`,'%H'),record.`p_id`,record.face_no
+		)a
+		GROUP BY DATE_FORMAT(a.`record_time`,'%H')
+	</select>
+	<!-- 24小时通行人次数 -->
+	<select id="getPassInfoOfdayByTime" resultType="PassInfoOfDayDM">
+		SELECT 
+			DATE_FORMAT(record.record_time,'%H') h,IFNULL(COUNT(record.record_time),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		WHERE 
+			record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y-%m-%d')=DATE_FORMAT(NOW(),'%y-%m-%d')
+			<if test="type==1">
+				AND record.record_type=1
+			</if>
+		GROUP BY DATE_FORMAT(record.`record_time`,'%H')
+	</select>
+    <!-- 本周通行人数 -->
+    <select id="getPassInfoOfWeekByNum" resultType="PassInfoOfMonDM">
+        SELECT
+          b.d,
+          SUM(IF(b.d is not null AND b.num !=0,1,0)) num
+        FROM(
+            SELECT
+              DATE_FORMAT(date,'%d')d,
+              IFNULL( COUNT( record.record_time ), 0 ) num
+            FROM(
+                SELECT @a :=@a + 1 as `index`, DATE(ADDDATE(CURRENT_DATE, INTERVAL @a DAY)) AS `date`
+                FROM mysql.help_topic,(SELECT @a := 0) temp
+                WHERE @a &lt; 6 - WEEKDAY(CURRENT_DATE)
+                UNION
+                SELECT @s :=@s - 1 as `index`, DATE(DATE_SUB(CURRENT_DATE, INTERVAL @s DAY)) AS `date`
+                FROM mysql.help_topic,(SELECT @s := WEEKDAY(CURRENT_DATE) + 1) temp
+                WHERE @s &gt; 0
+                ORDER BY `date`
+            )a
+            LEFT JOIN ${params.dynamic_dbname}.hk_person_record record ON DATE_FORMAT(record.record_time,'%Y-%m-%d')=a.date
+            AND record.`isdelete` = 0
+            GROUP BY
+                DATE_FORMAT( date, '%d' ),
+                record.`p_id`,
+                record.face_no
+             )b
+        GROUP BY
+          b.d
+    </select>
+
+    <!-- 本周通行人次数 -->
+    <select id="getPassInfoOfWeekByTime" resultType="PassInfoOfMonDM">
+        SELECT
+            DATE_FORMAT(`date`,'%d')d,
+            IFNULL( COUNT( record.record_time ), 0 ) num
+        FROM(
+            SELECT @a :=@a + 1 as `index`, DATE(ADDDATE(CURRENT_DATE, INTERVAL @a DAY)) AS `date`
+            FROM mysql.help_topic,(SELECT @a := 0) temp
+            WHERE @a &lt; 6 - WEEKDAY(CURRENT_DATE)
+            UNION
+            SELECT @s :=@s - 1 as `index`, DATE(DATE_SUB(CURRENT_DATE, INTERVAL @s DAY)) AS `date`
+            FROM mysql.help_topic,(SELECT @s := WEEKDAY(CURRENT_DATE) + 1) temp
+            WHERE @s &gt; 0
+            ORDER BY `date`
+        )a
+        LEFT JOIN
+            ${params.dynamic_dbname}.hk_person_record record ON DATE_FORMAT(record.record_time,'%Y-%m-%d')=a.`date`
+        AND record.`isdelete` = 0
+        GROUP BY
+            DATE_FORMAT( `date`, '%d' )
+	</select>
+
+	<!-- 31天通行人数 -->
+	<select id="getPassInfoOfMonByNum" resultType="PassInfoOfMonDM">
+		SELECT 
+			DATE_FORMAT(a.record_time,'%d') d,IFNULL(COUNT(a.record_time),0) num
+		FROM(
+			SELECT 
+				record.`record_time`,record.`p_id`
+			FROM 
+				${params.dynamic_dbname}.hk_person_record record
+			WHERE 
+				record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y-%m')=DATE_FORMAT(NOW(),'%y-%m')
+			GROUP BY DATE_FORMAT(record.`record_time`,'%d'),record.`p_id`,record.face_no
+		)a
+		GROUP BY DATE_FORMAT(a.`record_time`,'%d')
+	</select>
+
+	<!-- 31天通行人次数 -->
+	<select id="getPassInfoOfMonByTime" resultType="PassInfoOfMonDM">
+		SELECT 
+			DATE_FORMAT(record.record_time,'%d') d,IFNULL(COUNT(record.record_time),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		WHERE 
+			record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y-%m')=DATE_FORMAT(NOW(),'%y-%m')
+		GROUP BY DATE_FORMAT(record.`record_time`,'%d')
+	</select>
+	<select id="PersonPageList" resultType="PersonDM">
+		SELECT 
+			person.`p_id` pId,
+			person.`headImg` headimg,
+			person.`p_no` pNo,
+			person.`name` name,
+			person.`age` age,
+			person.`sex` sex,	
+			lable.`name` lableName,
+			person.`phone` phone,
+			person.`card_type` cardType,
+			person.`card_no` cardNo,
+			person.`entrance_cardno` entranceCardno,
+			person.`create_time` createTime,
+			person.`alarm_nums` alarmNums,
+			person.`koseki` koseki,
+			person.`account_address` accountAddress,
+			person.`birthday` birthday,
+			person.`nationality` nationality,
+			person.`people` people,
+			person.`degree` degree,
+			person.`political_outlook` politicalOutlook,
+			person.`marital_status` maritalStatus,
+			person.`create_user` createUser,
+			person.`update_time` updateTime,
+			person.`update_user` updateUser,
+			person.`data_source` dataSource,
+			person.`data_type` dataType,
+			person.`isdelete` isdelete,
+			person.`duodu_card_id` duoduCardId,
+			lable.`type_code` lableType,
+			person.`face_no` faceNo,
+			lable.`id` lableId
+		FROM 
+			${params.dynamic_dbname}.`hk_person` person
+		LEFT JOIN ${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id` 
+		<where> 
+			person.isdelete=0
+			<if test="lableType!='F04'">
+                AND lable.`type_code`!='F04'
+            </if>
+			<if test="lableType!=null">
+				AND	lable.`type_code`=#{lableType}
+			</if>
+			<if test="PAparam.sex!=null">
+				AND	person.`sex`=#{PAparam.sex}
+			</if>
+			<if test="PAparam.startTime !=null and PAparam.startTime !=''">
+				AND person.`create_time`&gt;=#{PAparam.startTime} 
+			</if>
+			<if test="PAparam.endTime !=null and PAparam.endTime !=''">
+				AND DATE_FORMAT(person.`create_time`,'%Y-%m-%d')&lt;=#{PAparam.endTime}
+			</if>
+			<if test="PAparam.nation!=null and PAparam.nation!=''">
+				AND person.`people`=#{PAparam.nation}
+			</if>
+			<if test="PAparam.lableId!=null">
+				AND person.`lable_id`=#{PAparam.lableId}
+			</if>
+			<if test="PAparam.lableId!=-1">	
+				AND person.`lable_id`!=-1
+			</if>
+			<if test="PAparam.beginAlarmTime!=null and PAparam.endAlarmTime!=null">
+				AND person.`alarm_nums`&gt;=#{PAparam.beginAlarmTime} AND person.`alarm_nums`&lt;=#{PAparam.endAlarmTime}
+			</if>
+			<if test="PAparam.cardType!=null">
+				AND person.`card_type` = #{PAparam.cardType}
+			</if>
+			<if test="PAparam.dataSource!=null">
+				AND person.`data_source` = #{PAparam.dataSource}
+			</if>
+			<if test="PAparam.content!=null">
+				AND CONCAT_WS('/',person.`name`,person.`phone`,person.`card_no`) 
+					LIKE
+					CONCAT('%',#{PAparam.content},'%')
+			</if>
+		</where>
+		ORDER BY person.`create_time` DESC
+	</select>
+	<select id="PersonInfo" resultType="PersonDM">
+		SELECT 
+			person.`p_id` pId,
+			person.`headImg` headimg,
+			person.`p_no` pNo,
+			person.`name` name,
+			person.`age` age,
+			person.`sex` sex,	
+			lable.`name` lableName,
+			person.`phone` phone,
+			person.`card_type` cardType,
+			person.`card_no` cardNo,
+			person.`entrance_cardno` entranceCardno,
+			person.`create_time` createTime,
+			person.`alarm_nums` alarmNums,
+			person.`koseki` koseki,
+			person.`account_address` accountAddress,
+			person.`birthday` birthday,
+			person.`nationality` nationality,
+			person.`people` people,
+			person.`degree` degree,
+			person.`political_outlook` politicalOutlook,
+			person.`marital_status` maritalStatus,
+			person.`create_user` createUser,
+			person.`update_time` updateTime,
+			person.`update_user` updateUser,
+			person.`data_source` dataSource,
+			person.`data_type` dataType,
+			person.`isdelete` isdelete,
+			lable.`type_code` lableType,
+			person.`face_no` faceNo,
+			lable.id lableId,
+			person.`duodu_card_id` duoduCardId
+		FROM 
+			${params.dynamic_dbname}.`hk_person` person
+		LEFT JOIN ${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id` 
+		WHERE
+			person.p_id=#{pId} AND person.isdelete=0
+	</select>
+	<select id="PersonInfoByNo" resultType="PersonDM">
+		SELECT 
+			person.`p_id` pId,
+			person.`headImg` headimg,
+			person.`p_no` pNo,
+			person.`name` name,
+			person.`age` age,
+			person.`sex` sex,	
+			lable.`name` lableName,
+			person.`phone` phone,
+			person.`card_type` cardType,
+			person.`card_no` cardNo,
+			person.`entrance_cardno` entranceCardno,
+			person.`create_time` createTime,
+			person.`alarm_nums` alarmNums,
+			person.`koseki` koseki,
+			person.`account_address` accountAddress,
+			person.`birthday` birthday,
+			person.`nationality` nationality,
+			person.`people` people,
+			person.`degree` degree,
+			person.`political_outlook` politicalOutlook,
+			person.`marital_status` maritalStatus,
+			person.`create_user` createUser,
+			person.`update_time` updateTime,
+			person.`update_user` updateUser,
+			person.`data_source` dataSource,
+			person.`data_type` dataType,
+			person.`isdelete` isdelete,
+			person.`duodu_card_id` duoduCardId,
+			lable.`type_code` lableType,
+			person.`face_no` faceNo,
+			lable.id lableId
+		FROM 
+			${params.dynamic_dbname}.`hk_person` person
+		LEFT JOIN ${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id` 
+		WHERE
+			person.p_no=#{pNo} AND person.isdelete=0
+	</select>
+	<select id="PersonInfoByFaceNo" resultType="PersonDM">
+		SELECT 
+			person.`p_id` pId,
+			person.`headImg` headimg,
+			person.`p_no` pNo,
+			person.`name` name,
+			person.`age` age,
+			person.`sex` sex,	
+			lable.`name` lableName,
+			person.`phone` phone,
+			person.`card_type` cardType,
+			person.`card_no` cardNo,
+			person.`entrance_cardno` entranceCardno,
+			person.`create_time` createTime,
+			person.`alarm_nums` alarmNums,
+			person.`koseki` koseki,
+			person.`account_address` accountAddress,
+			person.`birthday` birthday,
+			person.`nationality` nationality,
+			person.`people` people,
+			person.`degree` degree,
+			person.`political_outlook` politicalOutlook,
+			person.`marital_status` maritalStatus,
+			person.`create_user` createUser,
+			person.`update_time` updateTime,
+			person.`update_user` updateUser,
+			person.`data_source` dataSource,
+			person.`data_type` dataType,
+			person.`isdelete` isdelete,
+			person.`duodu_card_id` duoduCardId,
+			lable.`type_code` lableType,
+			person.`face_no` faceNo,
+			lable.id lableId
+		FROM 
+			${params.dynamic_dbname}.`hk_person` person
+		LEFT JOIN ${params.dynamic_dbname}.`hk_person_lable` lable ON lable.`id`=person.`lable_id` 
+		WHERE
+			person.face_no=#{faceNo} AND person.isdelete=0
+	</select>
+	<select id="StrangerInfo" resultType="PersonStrangerListUM">
+		SELECT 
+			stranger.id,
+			stranger.yun_no faceNo,
+			stranger.headImg,
+			stranger.frequency,
+			stranger.first_time firstTime,
+			stranger.age,
+			stranger.`name`,
+			stranger.sex,
+			stranger.phone,
+			stranger.card_no cardNo,
+			stranger.address
+		FROM 
+			${params.dynamic_dbname}.hk_person_stranger stranger
+		WHERE
+			stranger.yun_no=#{faceNo}
+	</select>
+	<insert id="AddPersonMessage">
+		INSERT INTO 
+			${params.dynamic_dbname}.hk_person  
+			(
+			`headImg`,
+			`p_no`,
+			`entrance_cardno`,
+			`name`,
+			`phone`,
+			`card_type`,
+			`card_no`,
+			`age`,
+			`sex`,
+			`koseki`,
+			`account_address`,
+			`lable_id`,
+			`nationality`,
+			`people`,
+			`degree`,
+			`political_outlook`,
+			`marital_status`,
+			`create_time`,
+			`data_source`,
+			`data_type`,
+			`create_user`,
+			`face_no`
+			) 
+		VALUES
+			(
+			#{PAparam.headImg},
+			#{PAparam.pNo},
+			#{PAparam.entranceCardno},
+			#{PAparam.name},
+			#{PAparam.phone},
+			#{PAparam.cardType},<!-- 证件类型 1 身份证 2 护照 3 居住证 4 签证 -->
+			#{PAparam.cardNo},
+			#{PAparam.age},
+			#{PAparam.sex},		<!-- 1男 2女 -->
+			#{PAparam.koseki},	<!--是否本地 0否 1是 -->
+			#{PAparam.accountAddress},
+			#{PAparam.lableId},
+			#{PAparam.nationality},
+			#{PAparam.people},
+			#{PAparam.degree},
+			#{PAparam.politicalOutlook},
+			#{PAparam.maritalStatus},
+			NOW(),
+			#{PAparam.dataSource},<!-- 数据来源: 1:xxx门禁  2xxx摄像头 -->
+			#{PAparam.dateType}, <!-- 是否本区居民 1 是 2否 -->
+			#{PAparam.createUser},
+			#{PAparam.faceNo}<!-- 人脸编号 -->
+			)	
+		<selectKey order="AFTER" resultType="java.lang.Integer" keyProperty="PAparam.pId">
+			SELECT LAST_INSERT_ID() AS pId
+		</selectKey>
+	</insert>
+	<update id="updatePersonMessage">
+		UPDATE 
+			${params.dynamic_dbname}.hk_person person
+		<set>
+            <if test="PAparam.lableId !=null">
+                person.`lable_id`=#{PAparam.lableId},
+            </if>
+			<if test="PAparam.headImg !=null and PAparam.headImg!=''">
+				person.`headImg`=#{PAparam.headImg},
+			</if>
+			<if test="PAparam.entranceCardno !=null and PAparam.entranceCardno !=''">
+				person.`entrance_cardno`=#{PAparam.entranceCardno},
+			</if>
+			<if test="PAparam.name !=null and PAparam.name !=''">
+				person.`name`=#{PAparam.name},
+			</if>
+			<if test="PAparam.phone !=null and PAparam.phone!=''">
+				person.`phone`=#{PAparam.phone},
+			</if>
+			<if test="PAparam.cardType !=null">
+				person.`card_type`=#{PAparam.cardType},
+			</if>
+			<if test="PAparam.cardNo !=null and PAparam.cardNo!=''">
+				person.`card_no`=#{PAparam.cardNo},
+			</if>
+			<if test="PAparam.age !=null">
+				person.`age`=#{PAparam.age},
+			</if>
+			<if test="PAparam.sex !=null">
+				person.`sex`=#{PAparam.sex},
+			</if>
+			<if test="PAparam.koseki !=null">
+				person.`koseki`=#{PAparam.koseki},
+			</if>
+			<if test="PAparam.accountAddress !=null and PAparam.accountAddress !=''">
+				person.`account_address`=#{PAparam.accountAddress},
+			</if>
+			<if test="PAparam.nationality !=null and PAparam.nationality !=''">
+				person.`nationality`=#{PAparam.nationality},
+			</if>
+			<if test="PAparam.people !=null and PAparam.people !='' ">
+				person.`people`=#{PAparam.people},
+			</if>
+			<if test="PAparam.degree !=null and PAparam.degree!=''">
+				person.`degree`=#{PAparam.degree},
+			</if>
+			<if test="PAparam.politicalOutlook !=null and PAparam.politicalOutlook !=''">
+				person.`political_outlook`=#{PAparam.politicalOutlook},
+			</if>
+			<if test="PAparam.maritalStatus !=null and PAparam.maritalStatus !=''">
+				person.`marital_status`=#{PAparam.maritalStatus},
+			</if>
+			<if test="PAparam.dataSource !=null">
+				person.`data_source`=#{PAparam.dateSource},
+			</if>
+			<if test="PAparam.dateType !=null">
+				person.`data_type`=#{PAparam.dateType},
+			</if>
+			<if test="PAparam.createUser !=null">
+				person.`update_user`=#{PAparam.createUser},
+			</if>
+			<!-- 第三方需要修改的 -->
+			<if test="PAparam.duoduCardId !=null and PAparam.duoduCardId !=''">
+				person.`duodu_card_id`=#{PAparam.duoduCardId},
+			</if>
+			<if test="PAparam.pNo !=null and PAparam.pNo !=''">
+				person.`p_no`=#{PAparam.pNo},
+			</if>
+				person.`update_time` = NOW()
+        </set>
+		WHERE
+			person.`p_id`=#{pId}
+	</update>
+	<select id="getPersonIDAndNo" resultType="PersonIDAndNoDM">
+		SELECT 
+			person.`p_id` pId,
+			person.`p_no` pNo
+		FROM 
+			${params.dynamic_dbname}.hk_person person
+		LEFT JOIN ${params.dynamic_dbname}.hk_person_lable lable ON  lable.id=person.lable_id
+		<where>
+		    person.isdelete=0
+			<if test="Sage != null and Eage != null">
+                AND person.`age`&gt;=#{Sage}
+                AND person.`age`&lt;=#{Eage}
+			</if>
+			<if test="sex !=null ">
+				AND person.`sex`=#{sex}
+			</if> 
+			<if test="people != null and people !=''">
+				AND person.`people`=#{people}
+			</if> 
+			<if test="lableId !=null and lableId !=-2">
+				AND person.`lable_id`=#{lableId}
+			</if>
+            <if test="lableId ==-2">
+                AND
+                IF(person.lable_id!=0,lable.type_code!='F04',1=1)
+                AND
+                person.`data_type`=1
+            </if>
+			<if test="nationality !=null and nationality !=''">
+				AND person.`nationality`=#{nationality}
+			</if> 
+			<if test="name != null and name != ''">
+				AND person.`name` like CONCAT('%',#{name},'%')
+			</if>
+		</where>
+	</select>
+	<select id="PeopleRoomRePage" resultType="PersonRoomUM">
+		SELECT 
+			proom.id id,
+			proom.p_id pId,
+			room.id roomId,
+			b.`building_name` buildingName,
+			f.`floor_name` floorName,
+			room.room_name roomName,
+			proom.reason reasonId,
+			diction.key_value reason,
+			proom.remark remark,
+			unit.id unitId,
+			unit.unit_name unitName
+		FROM 
+			${params.dynamic_dbname}.hk_person_room proom
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_room room 
+		ON room.id=proom.room_id 
+		AND room.isdelete=0
+		LEFT JOIN
+			${params.dynamic_dbname}.hk_unit unit
+		ON unit.id=room.unit_id 
+		AND unit.isdelete=0
+		LEFT JOIN
+			${params.dynamic_dbname}.hk_building b
+		ON room.`building_id` = b.`id`
+		AND b.`isdelete` = 0
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_floors f
+		ON room.`floor_id` = f.`id`
+		AND f.`isdelete` = 0
+		LEFT JOIN 
+			${params.base_dbname}.hk_diction diction ON diction.id=proom.reason
+		WHERE 
+			proom.p_id=#{pa.pid}
+		AND proom.room_id=room.id
+		AND proom.isdelete=0
+		<if test="pa.building">
+			AND room.building_id=#{pa.building}
+		</if>
+		<if test="pa.floor">
+			AND room.floor_id=#{pa.floor}
+		</if>
+		<if test="pa.reason">
+			AND proom.reason=#{pa.reason}
+		</if>
+		<if test="pa.content">
+		AND room.room_name 
+		like 
+			CONCAT('%',#{pa.content},'%')
+		</if>
+		
+	</select>
+	
+	<select id="FaceInduction" resultType="int">
+		SELECT 
+			  IFNULL(COUNT(a.num),0) num
+		FROM
+		(SELECT 
+			IFNULL(COUNT( record.uid ),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_person_lable lable ON lable.`id`= record.`lable_id` 
+		WHERE 
+			record.`record_type`in (1,2)  AND record.isdelete=0
+			AND DATE_FORMAT(record.record_time,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d') 
+			<if test="lableType != null">
+			AND lable.`type_code`=#{lableType}
+			</if>
+		GROUP BY record.`p_id`) a
+	</select>
+	<select id="FaceInductionNum" resultType="int">
+		SELECT 
+			IFNULL(COUNT( record.uid ),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_person_lable lable ON lable.`id`= record.`lable_id` 
+		WHERE 
+			record.`record_type` in (1,2) AND record.isdelete=0
+			AND DATE_FORMAT(record.record_time,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d') 
+			<if test="lableType != null">
+			AND lable.`type_code`=#{lableType}
+			</if>
+	</select>
+	
+	<select id="StrangerFaceInduction" resultType="int">
+		SELECT 
+			IFNULL(COUNT( record.uid ),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		<where>
+			record.`record_type` in (1,2) AND record.isdelete=0
+            <if test="type==1">
+			  AND DATE_FORMAT(record.record_time,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d')
+            </if>
+			AND record.p_id is null
+		</where> 
+	</select>
+	<select id="StrangerFaceInductionNum" resultType="int">
+		SELECT 
+			  IFNULL(COUNT(a.num),0) num
+		FROM
+		(SELECT 
+			IFNULL(COUNT( record.uid ),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_person_lable lable ON lable.`id`= record.`lable_id` 
+		WHERE 
+			record.`record_type`in (1,2)  AND record.isdelete=0
+			<if test="type==1">
+			  AND DATE_FORMAT(record.record_time,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d')
+            </if>
+			AND record.`p_id` is null
+		GROUP BY record.face_no) a
+	</select>
+	
+	
+	<select id="getRecordNumberOfPass" resultType="int">
+		SELECT 
+		  IFNULL(COUNT(a.num),0) num
+		FROM
+		  (SELECT 
+		    IFNULL(COUNT(record.`uid`),0) num 
+		   FROM
+		     ${params.dynamic_dbname}.`hk_person_record` record 
+		   WHERE DATE_FORMAT(record.`record_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d') 
+		     AND record.isdelete=0 AND record.`record_type` !=1 
+		   GROUP BY record.`p_id`) a 
+	</select>
+	<select id="getRecordTotalTimeOfPass" resultType="int">
+		SELECT 
+		  IFNULL(COUNT(record.uid),0)num
+		FROM
+		   ${params.dynamic_dbname}.`hk_person_record` record 
+		WHERE DATE_FORMAT(record.`record_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d')
+		  AND record.isdelete=0 AND record.`record_type` !=1 
+	</select>
+	
+	<select id="getRecordTotalByType" resultType="RecordNumByTypeUM">
+		SELECT 
+		  IFNULL(record.`record_type`,0) type,
+		  IFNULL(COUNT(record.uid),0) num
+		FROM
+		   ${params.dynamic_dbname}.`hk_person_record` record 
+		WHERE DATE_FORMAT(record.`record_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(), '%Y-%m-%d')
+		  AND record.isdelete=0 AND record.`record_type` !=1 
+		GROUP BY 
+		  record.`record_type`
+		ORDER BY
+		  record.`record_type`
+	</select>
+	<!-- 31天通行人数 -->
+	<select id="getPassInfoOfYearByNum" resultType="PassInfoOfMonDM">
+		SELECT 
+			DATE_FORMAT(a.record_time,'%m') d,IFNULL(COUNT(a.record_time),0) num
+		FROM(
+			SELECT 
+				record.`record_time`,record.`p_id`
+			FROM 
+				${params.dynamic_dbname}.hk_person_record record
+			WHERE 
+				record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y')=DATE_FORMAT(NOW(),'%y')
+			GROUP BY DATE_FORMAT(record.`record_time`,'%m'),record.`p_id`
+		)a
+		GROUP BY DATE_FORMAT(a.`record_time`,'%m')
+	</select>
+
+	<!-- 31天通行人次数 -->
+	<select id="getPassInfoOfYearByTime" resultType="PassInfoOfMonDM">
+		SELECT 
+			DATE_FORMAT(record.record_time,'%m') d,IFNULL(COUNT(record.record_time),0) num
+		FROM 
+			${params.dynamic_dbname}.hk_person_record record
+		WHERE 
+			record.`isdelete`=0 AND DATE_FORMAT(record.`record_time`,'%y')=DATE_FORMAT(NOW(),'%y')
+		GROUP BY DATE_FORMAT(record.`record_time`,'%m')
+	</select>
+	<select id="getPopulationTrend" resultType="PopulationTrendUM">
+		SELECT
+			IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 1, 1, 0 ) ),0) mon1
+			<if test="month>=2 or month ==-1">
+              ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 2, 1, 0 ) ),0) mon2
+            </if>
+            <if test="month>=3 or month ==-1">
+			 ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 3, 1, 0 ) ),0) mon3
+            </if>
+            <if test="month>=4 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 4, 1, 0 ) ),0) mon4
+            </if>
+            <if test="month>=5 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 5, 1, 0 ) ),0) mon5
+            </if>
+            <if test="month>=6 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 6, 1, 0 ) ),0) mon6
+            </if>
+            <if test="month>=7 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 7, 1, 0 ) ),0) mon7
+            </if>
+            <if test="month>=8 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 8, 1, 0 ) ),0) mon8
+            </if>
+            <if test="month>=9 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 9, 1, 0 ) ),0) mon9
+            </if>
+            <if test="month>=10 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 10, 1, 0 ) ),0) mon10
+            </if>
+            <if test="month>=11 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 11, 1, 0 ) ),0) mon11
+            </if>
+            <if test="month>=12 or month ==-1">
+			  ,IFNULL(SUM( IF ( MONTH(person.create_time) &lt;= 12, 1, 0 ) ),0) mon12
+            </if>
+		FROM
+			${params.dynamic_dbname}.hk_person person
+			LEFT JOIN ${params.dynamic_dbname}.hk_person_lable lable ON lable.id = person.lable_id 
+		WHERE
+			person.isdelete = 0 
+			AND person.lable_id !=- 1 
+			AND lable.type_code != 'F04' 
+			AND person.data_type != 2
+			AND YEAR(person.create_time)=#{year}
+	</select>
+	<select id="getLastYearLablePopulation" resultType="PopulationByLableUM">
+		SELECT
+			IFNULL(COUNT(person.p_id),0) populationNum,
+			IFNULL(SUM(IF(lable.type_code='F01',1,0)),0) careNum,
+			IFNULL(SUM(IF(lable.type_code='F02',1,0)),0) riskNum,
+			IFNULL(SUM(IF(lable.type_code='F03',1,0)),0) serviceNum,
+			IFNULL(SUM(IF(lable.type_code='F04',1,0)),0) blackListNum
+		FROM
+			${params.dynamic_dbname}.hk_person person
+			LEFT JOIN ${params.dynamic_dbname}.hk_person_lable lable ON lable.id = person.lable_id
+		WHERE
+			person.isdelete = 0 
+			AND person.lable_id !=- 1 
+			AND YEAR(person.create_time)=(YEAR(NOW())-1)
+	</select>
+	<select id="getPersonNumByfloors" resultType="PersonFloorsStatisticsUM">
+		SELECT
+			building.id buildingId,
+			building.building_name buildingName,
+			IFNULL(SUM(IF(proom.id is not null,1,0)),0) num
+		FROM
+			${params.dynamic_dbname}.hk_building building
+			LEFT JOIN 
+				${params.dynamic_dbname}.hk_room room ON room.building_id = building.id 
+				AND room.isdelete = 0
+			LEFT JOIN ${params.dynamic_dbname}.hk_person_room proom ON proom.room_id = room.id 
+			AND proom.isdelete = 0 
+		WHERE
+			building.isdelete =0
+		GROUP BY building.id
+	</select>
+	
+	<select id="PersonStrangerPage" resultType="PersonStrangerListUM">
+		SELECT
+			stranger.id,
+			stranger.yun_no faceNo,
+			stranger.headImg headimg,
+			stranger.frequency,
+			stranger.first_time firstTime,
+			stranger.age,
+			stranger.`name`,
+			stranger.sex,
+			stranger.phone,
+			stranger.card_no cardNo
+		FROM
+			${params.dynamic_dbname}.hk_person_stranger stranger
+		<where>
+			<if test="pa.sex!=null">
+				stranger.sex=#{pa.sex}
+			</if>
+			<if test="pa.beginNum!=null">
+				AND stranger.frequency &gt;=#{pa.beginNum}
+			</if>
+			<if test="pa.endNum!=null">
+				AND stranger.frequency &lt;=#{pa.endNum}
+			</if>
+			<if test="pa.dataSource!=null">
+				AND stranger.data_source =#{pa.dataSource}
+			</if>
+			<if test="pa.content!=null and pa.content!=''">
+				AND CONCAT_WS('/',stranger.`name`,stranger.phone,stranger.card_no) 
+					LIKE
+					CONCAT('%',#{pa.content},'%')
+			</if>
+			<if test="pa.startTime!=null and pa.startTime!=''">
+                AND stranger.first_time &gt;=#{pa.startTime}
+            </if>
+            <if test="pa.endTime!=null and pa.endTime!=''">
+                AND stranger.first_time &lt;=#{pa.endTime}
+            </if>
+		</where>
+	</select>
+	<select id="getStrangerByNo" resultType="PersonStrangerListUM">
+		SELECT
+			stranger.id,
+			stranger.yun_no faceNo,
+			stranger.headImg,
+			stranger.frequency,
+			stranger.first_time firstTime,
+			stranger.age,
+			stranger.`name`,
+			stranger.sex,
+			stranger.phone,
+			stranger.card_no cardNo
+		FROM
+			${params.dynamic_dbname}.hk_person_stranger stranger
+		WHERE
+			stranger.yun_no=#{faceNo}
+	</select>
+	
+	<select id="getDuoDuRoomData" resultType="DuoDuRoomMesDM">
+		SELECT 
+			room.doordu_room_id duRoomId,
+			unit.doordu_unit_id duUnitId
+		FROM 
+			${params.dynamic_dbname}.hk_room room
+		LEFT JOIN 
+			${params.dynamic_dbname}.hk_unit unit ON unit.id=room.unit_id AND unit.isdelete=0
+		WHERE 
+			room.isdelete=0	
+			AND room.id=#{roomId}
+	</select>
+	
+	<insert id="addStrangerMessage">
+		INSERT INTO 
+			${params.dynamic_dbname}.`hk_person_stranger`
+				(`yun_no`,
+				 `headImg`,
+				 `frequency`, 
+				 `last_time`, 
+				 `first_time`, 
+				 `address`) 
+			VALUES 
+				(#{faceNo},
+				 #{headImg},
+				 1, 
+				 NOW(), 
+				 NOW(),
+				 #{address})
+		
+	</insert>
+	<update id="updateStrangerMessage">
+		UPDATE ${params.dynamic_dbname}.`hk_person_stranger` 
+		SET 
+			`frequency` = #{frequency},
+			`last_time` = NOW()
+		WHERE
+			`yun_no` = #{faceNo}
+	</update>
+	
+	<select id="getPersonRoomReExists" resultType="int">
+		SELECT
+			IFNULL(COUNT(proom.id),0)
+		FROM
+			${params.dynamic_dbname}.hk_person_room proom
+		where
+			proom.p_id=#{pId}
+	</select>
+    <select id="checkPersonHoleById" resultType="int">
+        SELECT
+            COUNT(hole_populations-&gt;'$.p_id')
+        FROM
+           ${params.dynamic_dbname}.hk_person_hole
+        WHERE
+            hole_populations->'$.p_id'=#{pId}
+    </select>
+    <update id="deleteAllAboutPersonById">
+
+
+    </update>
+</mapper>

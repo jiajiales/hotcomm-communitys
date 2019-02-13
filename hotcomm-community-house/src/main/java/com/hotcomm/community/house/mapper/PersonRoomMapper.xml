@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.house.mapper.PersonRoomMapper">
+	<select id="page" resultType="PersonRoomUM">
+		SELECT
+		pr.id id,
+		p.`p_id` pId,
+		p.`headImg`
+		headImg,
+		p.`p_no` pNo,
+		p.`name` `name`,
+		pr.`reason` reason,
+		pr.`reason` reasonId,
+		pr.`remark`
+		remark,
+		r.`id` roomId,
+		r.`room_name`
+		roomName,
+		b.`building_name`
+		buildingName,
+		f.`floor_name` floorName
+		FROM
+		${tableParams.dynamic_dbname}.hk_person p
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_person_room pr
+		ON p.`p_id` = pr.`p_id`
+		AND pr.`isdelete` = 0
+		RIGHT JOIN ${tableParams.dynamic_dbname}.hk_room r
+		ON pr.`room_id` = r.`id`
+		AND r.`isdelete` = 0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON r.`building_id` = b.`id`
+		AND b.`isdelete` = 0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors
+		f
+		ON r.`floor_id` = f.`id`
+		AND f.`isdelete` = 0
+		WHERE p.`isdelete` = 0
+		<if test="params.roomId!=null and params.roomId!=''">
+			AND pr.`room_id` = #{params.roomId}
+		</if>
+		<if test="params.pId!=null and params.pId!=''">
+			AND pr.`room_id` IN (SELECT GROUP_CONCAT(room_id) roomId FROM ${tableParams.dynamic_dbname}.hk_person_room WHERE p_id=#{params.pId})
+		</if>
+		<if test="params.reason!=null and params.reason!=''">
+			AND pr.`reason`=#{params.reason}
+		</if>
+		<if test="params.floorId!=null and params.floorId!=''">
+			AND f.`id`=#{params.floorId}
+		</if>
+		<if test="params.buildingId!=null and params.buildingId!=''">
+			AND b.`id`=#{params.buildingId}
+		</if>
+		<if test="params.content!=null and params.reason!=''">
+			AND CONCAT_WS(',',p.`name`,r.`room_name`) LIKE CONCAT('%',#{params.content},'%')
+		</if>
+		GROUP BY pr.`id`
+		ORDER BY pr.`create_time` DESC
+	</select>
+	<select id="getRelationRoomUMs" resultType="com.hotcomm.community.common.bean.ui.house.RelationRoomUM">
+		SELECT
+		p.`p_id` pId,
+		p.`name` `name`,
+		p.`phone` phone,
+		r.`id` roomId,
+		CONCAT_WS('->',b.`building_name`,u.`unit_name`,f.`floor_name`,r.`room_name`) roomName
+		FROM ${tableParams.dynamic_dbname}.hk_person p 
+		RIGHT JOIN ${tableParams.dynamic_dbname}.hk_person_room pr ON pr.`p_id`=p.`p_id` AND pr.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r ON pr.`room_id`=r.`id` AND r.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors f ON r.`floor_id`=f.`id` AND f.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_unit u ON u.`id`=r.`unit_id` AND u.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b ON b.`id`=r.`building_id` AND b.`isdelete`=0
+		WHERE EXISTS (
+		SELECT p_id FROM ${tableParams.dynamic_dbname}.hk_person 
+		WHERE `name` LIKE CONCAT('%',#{tableParams.name},'%') 
+		AND pr.`p_id`=p_id 
+		AND isdelete=0)	
+	</select>
+	<select id="isExist" resultType="java.lang.Integer">
+		SELECT 
+		  COUNT(id) 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_person_room 
+		WHERE p_id =#{tableParams.pId} 
+		  AND room_id =#{tableParams.roomId}
+		  AND isdelete = 0 
+	</select>
+	<insert id="addData">
+		INSERT INTO ${tableParams.dynamic_dbname}.hk_person_room
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="params.pId!=null">
+				p_id,
+			</if>
+			<if test="params.roomId!=null">
+				room_id,
+			</if>
+			<if test="params.reason!=null">
+				reason,
+			</if>
+			<if test="params.remark!=null">
+				remark,
+			</if>
+			<if test="params.rentOrSale!=null">
+				rent_or_sale,
+			</if>
+			create_time
+		</trim>
+		<trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+			<if test="params.pId!=null">
+				#{params.pId},
+			</if>
+			<if test="params.roomId!=null">
+				#{params.roomId},
+			</if>
+			<if test="params.reason!=null">
+				#{params.reason},
+			</if>
+			<if test="params.remark!=null">
+				#{params.remark},
+			</if>
+			<if test="params.rentOrSale!=null">
+				#{params.rentOrSale},
+			</if>
+			NOW()
+		</trim>
+	</insert>
+	<update id="delData">
+		UPDATE
+		${tableParams.dynamic_dbname}.hk_person_room
+		SET
+		isdelete = 1
+		WHERE id =#{id}
+	</update>
+</mapper>

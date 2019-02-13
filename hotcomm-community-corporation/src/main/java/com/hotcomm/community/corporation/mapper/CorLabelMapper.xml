@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.corporation.mapper.CorLabelMapper">
+
+  <select id="pagelist"  resultType="CorLabelUM">
+  SELECT 
+    a.id,
+    b.id labelTypeId,
+    a.label_name labelName,
+    a.describes,
+    (case a.label_source
+		when 0  then '系统'
+	    when 1 then '自定义'
+	    else '异常状态' end)  labelSource,
+	 DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+	 a.create_user createUser,
+	 b.type_name typeName,
+	 a.state,
+	 (case a.state when 0 then true
+	 else false  end) stateBoolean
+  FROM ${pa.dynamic_dbname}.`hk_corporation_label`  a
+  LEFT JOIN ${pa.dynamic_dbname}.`hk_corporation_label_type`  b  ON  a.type_id = b.id
+  WHERE 1=1
+	  <if test="pa.labelName !=null and pa.labelName != ''">
+	     AND a.label_name  LIKE concat('%',#{pa.labelName},'%')
+	  </if>
+  		<if test="pa.startTime !=null and  pa.startTime != '' ">
+			and DATE_FORMAT(a.create_time,'%Y-%m-%d')  >=  #{pa.startTime}
+		</if>
+		<if test="pa.endTime !=null and  pa.endTime != '' ">
+			and #{pa.endTime} >= DATE_FORMAT(a.create_time,'%Y-%m-%d') 
+		</if>
+		<if test="pa.labelTypeId !=null ">
+			and b.id =  #{pa.labelTypeId}
+		</if>
+		ORDER BY a.create_time DESC
+  </select>
+  
+<select id="detail"   parameterType="CorLabelDM"  resultType="CorLabelUM">
+    select 
+    a.id,
+    a.label_name labelName,
+    a.describes,
+    (case a.label_source
+		when 0  then '系统'
+	    when 1 then '自定义'
+	    else '异常状态' end)  labelSource,
+	 DATE_FORMAT(a.create_time,'%Y-%m-%d') createTime,
+	 a.create_user createUser,
+	 b.type_name typeName,
+	 b.id labelTypeId,
+	(case a.state when 0 then true
+	 else false  end) stateBoolean,
+	 a.state
+    from  ${dynamicDbname}.`hk_corporation_label`  a
+    left join   ${dynamicDbname}.`hk_corporation_label_type` b on a.type_id = b.id
+    where 1=1
+     <if test="id != null">
+        AND a.id = #{id,jdbcType=INTEGER}
+      </if>
+      <if test="labelName != null and labelName != ''">
+        AND a.label_name = #{labelName,jdbcType=INTEGER}
+      </if>
+  </select>
+
+  <delete id="delete" parameterType="CorLabelDM">
+    delete from ${dynamicDbname}.`hk_corporation_label` 
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+
+  <insert id="insert" parameterType="CorLabelDM">
+       <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Integer">  
+        SELECT LAST_INSERT_ID()  
+    </selectKey>
+    insert into ${dynamicDbname}.`hk_corporation_label` 
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        id,
+      </if>
+      <if test="typeId != null">
+        type_id,
+      </if>
+      <if test="labelName != null">
+        label_name,
+      </if>
+      <if test="describes != null">
+        describes,
+      </if>
+      <if test="labelSource != null">
+        label_source,
+      </if>
+      <if test="createTime != null">
+        create_time,
+      </if>
+      <if test="createUser != null">
+        create_user,
+      </if>
+      <if test="updateTime != null">
+        update_time,
+      </if>
+      <if test="updateUser != null">
+        update_user,
+      </if>
+      <if test="state != null">
+        state,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="id != null">
+        #{id,jdbcType=INTEGER},
+      </if>
+      <if test="typeId != null">
+        #{typeId,jdbcType=INTEGER},
+      </if>
+      <if test="labelName != null">
+        #{labelName,jdbcType=VARCHAR},
+      </if>
+      <if test="describes != null">
+        #{describes,jdbcType=VARCHAR},
+      </if>
+      <if test="labelSource != null">
+        #{labelSource,jdbcType=TINYINT},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="state != null">
+        #{state,jdbcType=TINYINT},
+      </if>
+    </trim>
+  </insert>
+  
+  <update id="update" parameterType="CorLabelDM">
+    update ${dynamicDbname}.`hk_corporation_label` 
+    <set>
+      <if test="typeId != null">
+        type_id = #{typeId,jdbcType=INTEGER},
+      </if>
+      <if test="labelName != null">
+        label_name = #{labelName,jdbcType=VARCHAR},
+      </if>
+      <if test="describes != null">
+        describes = #{describes,jdbcType=VARCHAR},
+      </if>
+      <if test="labelSource != null">
+        label_Source = #{labelSource,jdbcType=TINYINT},
+      </if>
+      <if test="createTime != null">
+        create_time = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="createUser != null">
+        create_user = #{createUser,jdbcType=VARCHAR},
+      </if>
+      <if test="updateTime != null">
+        update_time = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateUser != null">
+        update_user = #{updateUser,jdbcType=VARCHAR},
+      </if>
+      <if test="state != null">
+        state = #{state,jdbcType=TINYINT},
+      </if>
+    </set>
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+</mapper>
+

@@ -1,0 +1,498 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.device.mapper.DeviceMapper">
+	<sql id="moduleName">
+		<if test="module_id == 1">'烟感'</if>
+		<if test="module_id == 2">'可燃气'</if>
+		<if test="module_id == 3">'水压'</if>
+		<if test="module_id == 4">'剩余电流'</if>
+	</sql>
+	<select id="devicePage"
+		resultType="com.hotcomm.community.common.bean.ui.device.DevicePageUM">
+		SELECT d.id AS id , d.`mac` AS mac , d.`dev_num` AS devNum ,
+		CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),IFNULL(d.`dev_address`,'')) AS `code` ,
+		d.`lat` AS lat , d.`lon` AS lon , u.real_name AS userName , d.`state` AS
+		state ,
+		d.`battery` AS battery , IFNULL(JSON_LENGTH(d.`video_list` -> '$.video'),'') AS
+		videoNum , d.`dev_type` AS devType ,
+		d.install_time installTime
+		FROM ${tableParams.dynamic_dbname}.`hk_device` d
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id =
+		d.`floor_num`
+		WHERE d.`is_enble` = 1 AND d.`module_id` =
+		${devicePagePA.moduleId}
+		<if test="devicePagePA.devNum != null and devicePagePA.devNum != ''">
+			AND d.`dev_num` LIKE CONCAT("%",#{devicePagePA.devnum},"%")
+		</if>
+		<if test="devicePagePA.ownId != null">
+			AND d.`own_id` = ${devicePagePA.ownId}
+		</if>
+		<if test="devicePagePA.state != null">
+			AND d.`state` = ${devicePagePA.state}
+		</if>
+		<if test="devicePagePA.startTime != null and devicePagePA.startTime != ''">
+			AND d.`install_time` &gt;= #{devicePagePA.startTime}
+		</if>
+		<if test="devicePagePA.endTime != null and devicePagePA.endTime != ''">
+			AND d.`install_time` &lt;= #{devicePagePA.endTime}
+		</if>
+		GROUP BY d.id
+		ORDER BY d.install_time DESC
+	</select>
+
+	<insert id="deviceInstall" keyProperty="devid" useGeneratedKeys="true">
+		INSERT INTO ${dynamic_dbname}.`hk_device` (
+		mac,dev_type,dev_trademark,lat,lon,own_id,
+		module_id,install_explain,install_userid,install_time,
+		building_num,dev_address,use_type
+		<if test="pictureList != null and pictureList != ''">,picture_list</if>
+		<if test="x != null">,x</if>
+		<if test="y != null">,y</if>
+		<if test="floorNum != null and floorNum != ''">,floor_num</if>
+		<if test="videoList != null and videoList != ''">,video_list</if>
+		<if test="unitNum != null and unitNum != ''">,unit_num</if>
+		)
+		VALUES
+		(
+		#{mac},#{devType},#{devTradeMark},
+		#{lat},#{lon},${ownId},
+		${moduleId},#{installExplain},${installUserid}, NOW() ,
+		#{buildingNum},#{devAddress},#{useType}
+		<if test="pictureList != null and pictureList != ''">,#{pictureList}</if>
+		<if test="x != null">,#{x}</if>
+		<if test="y != null">,#{y}</if>
+		<if test="floorNum != null and floorNum != ''">,#{floorNum}</if>
+		<if test="videoList != null and videoList != ''">,#{videoList}</if>
+		<if test="unitNum != null and unitNum != ''">,#{unitNum}</if>
+		)
+	</insert>
+
+	<update id="deviceInstallUpdateNum">
+		UPDATE ${tableParams.dynamic_dbname}.`hk_device` SET
+		dev_num = #{dev_num} WHERE mac = #{mac}
+	</update>
+
+	<insert id="deviceInstallCommunity">
+		INSERT INTO
+		${tableParams.base_dbname}.`hk_community_device` (device_code,c_id)
+		VALUES(#{mac},#{communityId})
+	</insert>
+
+	<select id="deviceAlarmGz"
+		resultType="com.hotcomm.community.common.bean.db.device.DeviceAlarmGzDM">
+		SELECT gz.id , gz.`module_id` moduleId, gz.`alarm_mac` alarmMac,
+		gz.`alarm_typename` alarmTypeName, gz.`alarm_level` alarmLevel,
+		gz.`alarm_vaule` alarmVaule, gz.`alarm_middle` alarmMiddle,
+		gz.`inner_userid` innerUserid,gz.`inform_userid` informUserid,
+		gz.`use_type` useType,gz.`is_open` isOpen
+		FROM
+		${tableParams.dynamic_dbname}.`hk_device_alarm_gz` gz
+		WHERE use_type =
+		${use_type}
+		<if test="use_type == 0"> AND gz.`module_id` = ${module_id}</if>
+		<if test="use_type == 1"> AND gz.`alarm_mac` = #{mac}</if>
+	</select>
+
+	<insert id="deviceAlarmGzInsert">
+		INSERT INTO ${tableParams.dynamic_dbname}.`hk_device_alarm_gz` (
+		module_id,alarm_mac,alarm_typename,
+		alarm_level,alarm_vaule,alarm_middle,
+		inner_userid,inform_userid,use_type,is_open
+		)
+		VALUES
+		<foreach collection="deviceAlarmGzDM" item="item" index="index"
+			separator=",">
+			(
+			${item.moduleId},#{mac},#{item.alarmTypeName},
+			#{item.alarmLevel},#{item.alarmVaule},#{item.alarmMiddle},
+			#{item.innerUserid},#{item.informUserid},1,#{item.isOpen}
+			)
+		</foreach>
+	</insert>
+
+	<update id="updateDev">
+		UPDATE ${tableParams.dynamic_dbname}.`hk_device`
+		<!-- <trim prefix="set" suffixOverrides=","></trim> -->
+			set building_num = ${devmsg.buildingNum},
+			unit_num = ${devmsg.unitNum},
+			floor_num = ${devmsg.floorNum},
+			dev_address = #{devmsg.devAddress},
+			lat = #{devmsg.lat},
+			lon = #{devmsg.lon},
+			x = ${devmsg.x},
+			y = ${devmsg.y},
+			use_type = #{devmsg.useType},
+			picture_list = #{devmsg.pictureList},
+			install_explain = #{devmsg.installExplain},
+			own_id = ${devmsg.ownId},
+			install_userid = ${devmsg.installUserid},
+			video_list = #{devmsg.videoList}
+		WHERE mac = #{devmsg.mac}
+	</update>
+
+	<select id="selectDeviceOnMac"
+		resultType="com.hotcomm.community.common.bean.ui.device.SelectDeviceOnMacUM">
+		SELECT d.id ,
+		<include refid="moduleName"></include>
+		as module , d.`state` , d.dev_type devType, d.dev_trademark
+		devTradeMark,
+		d.dev_num devNum, d.mac , d.building_num buildingNum,d.unit_num unitNum, d.floor_num floorNum,
+		d.lat , d.lon , d.install_time installTime ,
+		d.`x` , d.`y` , d.use_type useType, d.picture_list pictureList,
+		d.install_explain installExplain,
+		d.own_id ownId, d.install_userid
+		installUserid,CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),
+		IFNULL(d.`dev_address`,'')) AS `code` , dev_address devAddress , video_list videoList,
+		u.real_name ownRealName,u.telephone ownTelephone,u1.real_name installRealName,u1.telephone installTelephone
+		FROM
+		${tableParams.dynamic_dbname}.`hk_device` d
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id =
+		d.`floor_num`
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u1 ON u1.`user_id` = d.`install_userid`
+		WHERE d.is_enble = 1 AND d.mac = #{mac}
+	</select>
+
+	<select id="deviceMac"
+		resultType="com.hotcomm.community.common.bean.ui.device.DeviceMacDataUM">
+		SELECT device_code as deviceCode,c_id as communityId
+		FROM
+		`hotcomm_community`.`hk_community_device`
+		WHERE device_code = #{mac}
+	</select>
+
+	<select id="selectRulePage"
+		resultType="com.hotcomm.community.common.bean.ui.device.SelectRulePageUM">
+		SELECT m.id as moduleId , m.`module_name` moduleName,
+		COUNT(gz.id) as gzNum , gz.`inner_userid` innerUserid,
+		gz.`inform_userid` informUserid
+		FROM
+		${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_device_alarm_gz` gz ON gz.`use_type`
+		= 0 AND gz.`module_id` = m.`id`
+		WHERE `is_enble` = 1
+		GROUP BY m.id
+	</select>
+
+	<select id="selectRulePageUser" resultType="java.lang.String">
+		SELECT GROUP_CONCAT(IFNULL(real_name,'未知用户名'),'
+		',IFNULL(telephone,'暂无联系电话'))
+		FROM
+		${tableParams.base_dbname}.`hk_sys_user`
+		WHERE `user_id` IN
+		<foreach collection="list" index="index" item="item" open="("
+			separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY `user_id`
+	</select>
+
+	<select id="selectDeviceState"
+		resultType="com.hotcomm.community.common.bean.db.device.SelectDeviceStateDM">
+		SELECT m.`module_name` moduleName , COUNT(d.id) devNum ,
+		COUNT(CASE WHEN d.`state` = 0 OR d.`state` = 3 THEN d.id END) normal,
+		COUNT(CASE WHEN d.`state` = 1 THEN d.id END) offLine,
+		COUNT(CASE WHEN d.`state` = 2 THEN d.id END) fault
+		FROM
+		${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_device` d ON d.`is_enble` = 1 AND
+		d.`module_id` = m.`id`
+		WHERE m.`is_enble` = 1 AND m.id != 5
+		GROUP BY m.id
+	</select>
+
+	<select id="selectDeviceAlarm"
+		resultType="com.hotcomm.community.common.bean.db.device.SelectDeviceStateDM">
+		SELECT m.`module_name` moduleName , COUNT(a.id) alarm
+		FROM
+		${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_alarm` a ON a.`module_id` = m.`id`
+		AND a.`alarm_type` = 1
+		AND DATE_FORMAT( a.`create_time`, '%Y%m' ) = DATE_FORMAT( CURDATE( ) ,
+		'%Y%m' )
+		WHERE m.is_enble = 1
+		GROUP BY m.`id`
+	</select>
+
+	<update id="updateSystemRule">
+		UPDATE ${tableParams.dynamic_dbname}.`hk_device_alarm_gz`
+		SET alarm_level = ${rulepa.alarmLevel}, is_open = ${rulepa.isOpen}
+		<if test="rulepa.alarmVaule != null and rulepa.alarmVaule != ''">
+			, alarm_vaule = #{rulepa.alarmVaule}
+		</if>
+		WHERE id = ${rulepa.id}
+	</update>
+
+	<update id="updateSystemRuleUserid">
+		UPDATE
+		${tableParams.dynamic_dbname}.`hk_device_alarm_gz`
+		SET alarm_middle = ${rulepa.alarmMiddle}, inner_userid =
+		#{rulepa.innerUserid}, inform_userid = #{rulepa.informUserid}
+		WHERE use_type = 0 and module_id = ${rulepa.moduleId}
+	</update>
+
+	<update id="updateRuleUserid">
+		UPDATE
+		${tableParams.dynamic_dbname}.`hk_device_alarm_gz`
+		SET alarm_middle = ${rulepa.alarmMiddle}, inner_userid =
+		#{rulepa.innerUserid}, inform_userid = #{rulepa.informUserid}
+		WHERE use_type = 1 and alarm_mac = #{rulepa.mac}
+	</update>
+
+	<select id="selectDeviceMsgWork"
+		resultType="com.hotcomm.community.common.bean.ui.device.DeviceMsgWorkUM">
+		SELECT d.id, m.`module_name` name, d.`mac` mac,
+		CONCAT(b.`building_name`,IFNULL(hu.`unit_name`,''),IFNULL(f.`floor_name`,''),IFNULL(d.`dev_address`,''))
+		devAddress,
+		d.`lat` , d.`lon` , IF(d.`state` = 0 , 0 , 1) isAlarm
+		FROM
+		${tableParams.dynamic_dbname}.`hk_device` d
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_device_module` m ON m.id = d.`module_id`
+		LEFT
+		JOIN ${tableParams.dynamic_dbname}.`hk_building` b ON b.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` f
+		ON f.id = d.`floor_num`
+		WHERE d.`is_enble` = 1
+		<if test="moduleid!=null"> AND d.`module_id` = ${moduleId}</if>
+		<if test="mac!=null"> AND d.`mac` = #{mac}</if>
+		<if test="isAlarm != null and isAlarm == 1"> AND d.`state` != 0 </if>
+	</select>
+	<insert id="videodeviceInstall" keyProperty="devid"
+		useGeneratedKeys="true">
+		INSERT INTO ${dynamic_dbname}.`hk_device_video` (
+		mac,dev_type,dev_location,dev_trademark,user_name,
+		pass_word,videoip,nvrip,videoport,port,channel,lat,lon,own_id,
+		install_explain,install_userid,install_time,
+		building_num,dev_address,use_type,nvruser_name,nvrpass_word
+		<if test="pictureList != null and pictureList != ''">,picture_list</if>
+		<if test="videoList != null and videoList != ''">,video_list</if>
+		<if test="x != null and x != ''">,x</if>
+		<if test="y != null and y != ''">,y</if>
+		<if test="unitNum != null and unitNum != ''">,unit_num</if>
+		<if test="floorNum != null and floorNum != ''">,floor_num</if>
+		)
+		VALUES
+		(
+		#{mac},#{devType},#{devLocation},#{devTradeMark},#{userName},
+		#{passWord},#{videoIp},#{nvrIp},#{videoPort},#{port},#{channel},#{lat},#{lon},${ownId},
+		#{installExplain},${installUserid}, NOW() ,
+		#{buildingNum},#{devAddress},#{useType},#{nvrUserName},#{nvrPassWord}
+		<if test="pictureList != null and pictureList != ''">,#{pictureList}</if>
+		<if test="videoList != null and videoList != ''">,#{videoList}</if>
+		<if test="x != null and x != ''">,#{x}</if>
+		<if test="y != null and y != ''">,#{y}</if>
+		<if test="unitNum != null and unitNum != ''">,#{unitNum}</if>
+		<if test="floorNum != null and floorNum != ''">,#{floorNum}</if>
+		)
+	</insert>
+
+	<update id="videodeviceInstallUpdateNum">
+		UPDATE
+		${tableParams.dynamic_dbname}.`hk_device_video` SET dev_num =
+		#{dev_num} WHERE mac = #{mac}
+	</update>
+
+	<select id="videodevicePage"
+		resultType="com.hotcomm.community.common.bean.ui.device.VideoDevicePageUM">
+		SELECT d.id id, d.`dev_num` devNum,
+		CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),IFNULL(d.`dev_address`,''))
+		`code`,
+		d.`lat` lat, d.`lon` lon, d.`dev_type` devType, u.`real_name` userName,
+		`install_time` installTime, `state` state,
+		d.`mac` mac
+		FROM ${tableParams.dynamic_dbname}.`hk_device_video` d
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf
+		ON hf.id = d.`floor_num`
+		WHERE d.`is_enble` = 1
+		<if test="devicePagePA.devNum != null and devicePagePA.devNum != ''">
+			AND d.`dev_num` LIKE CONCAT("%",#{devicePagePA.devNum},"%")
+		</if>
+		<if test="devicePagePA.ownId != null">
+			AND d.`own_id` = ${devicePagePA.ownId}
+		</if>
+		<if test="devicePagePA.state != null">
+			AND d.`state` = ${devicePagePA.state}
+		</if>
+		<if test="devicePagePA.startTime != null and devicePagePA.startTime != ''">
+			AND d.`install_time` &gt;= #{devicePagePA.startTime}
+		</if>
+		<if test="devicePagePA.endTime != null and devicePagePA.endTime != ''">
+			AND d.`install_time` &lt;= #{devicePagePA.endTime}
+		</if>
+		<if test="devicePagePA.devType != null">
+			AND d.`dev_type` = ${devicePagePA.devType}
+		</if>
+		GROUP BY d.id
+		ORDER BY d.install_time DESC
+	</select>
+
+	<select id="selectVideoDeviceOnMac"
+		resultType="com.hotcomm.community.common.bean.ui.device.SelectVideoDeviceOnMacUM">
+		SELECT d.id , '摄像头' as module , d.`state` , d.dev_type
+		devType,d.dev_location devLocation, d.dev_trademark devTradeMark,
+		d.user_name userName, d.pass_word passWord, d.videoip videoIp, d.nvrip
+		nvrIp, d.videoport videoPort, d.port port, d.channel channel,
+		d.dev_num devNum, d.mac mac,
+		d.building_num buildingNum, d.unit_num unitNum, d.floor_num floorNum, d.dev_address devAddress, d.lat , d.lon ,
+		d.`x` , d.`y` , d.use_type useType, d.picture_list pictureList,
+		d.install_explain installExplain,
+		d.own_id ownId, d.install_userid
+		installUserid,CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),
+		IFNULL(d.`dev_address`,'')) AS `code`,nvruser_name nvrUserName,nvrpass_word nvrPassWord,install_time installTime,
+		u.real_name ownRealName,u.telephone ownTelephone,u1.real_name installRealName,u1.telephone installTelephone,
+		video_list videoList
+		FROM
+		${tableParams.dynamic_dbname}.`hk_device_video` d
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id =
+		d.`floor_num`
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u1 ON u1.`user_id` = d.`install_userid`
+		WHERE d.is_enble = 1 AND d.mac = #{mac}
+	</select>
+
+	<update id="updateVideoDev">
+		UPDATE ${tableParams.dynamic_dbname}.`hk_device_video`
+		<!-- <trim prefix="set" suffixOverrides=","></trim> -->
+			set building_num = ${devmsg.buildingNum},
+			unit_num = ${devmsg.unitNum},
+			floor_num = ${devmsg.floorNum},
+			dev_address = #{devmsg.devAddress},
+			lat = #{devmsg.lat},
+			lon = #{devmsg.lon},
+			x = ${devmsg.x},
+			y = ${devmsg.y},
+			use_type = ${devmsg.useType},
+			picture_list = #{devmsg.pictureList},
+			video_list = #{devmsg.videoList},
+			install_explain = #{devmsg.installExplain},
+			own_id = ${devmsg.ownId},
+			install_userid = ${devmsg.installUserid},
+			dev_type = ${devmsg.devType},
+			dev_trademark = #{devmsg.devTradeMark},
+			mac = #{devmsg.newMac},
+			nvrIp = #{devmsg.nvrIp},
+			videoport = #{devmsg.videoPort},
+			port = ${devmsg.port},
+			videoip = #{devmsg.videoIp},
+			channel = #{devmsg.channel},
+			user_name = #{devmsg.userName},
+			pass_word = #{devmsg.passWord},
+			nvruser_name = #{devmsg.nvrUserName},
+			nvrpass_word = #{devmsg.nvrPassWord}
+		WHERE mac = #{devmsg.mac}
+	</update>
+	
+	<select id="videodeviceList" resultType="com.hotcomm.community.common.bean.ui.device.VideoDeviceListUM">
+		SELECT d.id , d.mac , d.dev_num devNum, d.`user_name` userName, d.`pass_word` passWord, 
+		d.`videoip` , d.`nvrip` , d.`videoport` , d.`PORT` , d.`channel`,
+				d.lat , d.lon , CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),
+		IFNULL(d.`dev_address`,'')) AS `code` , d.state , d.dev_type devType
+		FROM ${tableParams.dynamic_dbname}.`hk_device_video` d
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id =
+		d.`floor_num`
+		WHERE d.`is_enble` = 1
+		<if test="mac != null">AND d.id = #{mac}</if>
+	</select>
+	
+	<select id="selectFireFellAlarm" resultType="java.lang.Integer">
+		SELECT COUNT(id)
+		FROM ${tableParams.base_dbname}.`hk_device_type`
+		WHERE `use_id` = 1 AND alarm_id = ${alarmid}
+	</select>
+	
+	<select id="selectAlarmLevel" resultType="java.lang.Integer">
+		SELECT `level`
+		FROM hk_alarm_state
+		WHERE id = ${alarmid}
+	</select>
+	
+	<select id="selectDeviceAlarmCount" resultType="com.hotcomm.community.common.bean.ui.device.SelectDeviceAlarmCount">
+		SELECT m.`id` moduleId, m.`module_name` model, COUNT(a.id) alarmCount
+		FROM ${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN  ${tableParams.dynamic_dbname}.hk_alarm a ON m.`id` = a.`module_id` AND a.alarm_type = 1
+		WHERE m.`is_enble` = 1
+		GROUP BY m.id
+	</select>
+	
+	<select id="selectOffLineDevice" resultType="com.hotcomm.community.common.bean.ui.device.SelectDeviceOnMacUM">
+		SELECT d.id ,m.id moduleId ,
+		m.`module_name` module , d.`state` , d.dev_type devType, d.dev_trademark
+		devTradeMark,
+		d.dev_num devNum, d.mac , d.building_num buildingNum,d.unit_num unitNum, d.floor_num floorNum,
+		d.lat , d.lon , d.install_time installTime ,
+		d.`x` , d.`y` , d.use_type useType, d.picture_list pictureList,
+		d.install_explain installExplain,
+		d.own_id ownId, d.install_userid
+		installUserid,CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),
+		IFNULL(d.`dev_address`,'')) AS `code` , dev_address devAddress , video_list videoList
+		FROM ${tableParams.dynamic_dbname}.`hk_device` d
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device_alarm_gz` g ON g.`alarm_mac` = d.`mac` AND g.`alarm_typename` = '设备离线报警'
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id =
+		d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = 
+		d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id =
+		d.`floor_num`
+		LEFT JOIN
+		${tableParams.base_dbname}.`hk_device_module` m ON m.id = d.`module_id`
+		WHERE d.`state` = 0 AND d.`is_enble` = 1 AND TIMESTAMPDIFF(MINUTE,d.`lastdata_time`,NOW()) &gt;= g.`alarm_vaule` -> '$.offline'*60
+	</select>
+	
+	<update id="updateOffLineDevice">
+		UPDATE ${tableParams.dynamic_dbname}.`hk_device` d SET d.`state` = 1 
+		WHERE d.`state` = 0 AND 
+		TIMESTAMPDIFF(MINUTE,d.`lastdata_time`,NOW()) 
+		&gt;=
+		(SELECT g.`alarm_vaule` -> '$.offline'*60 
+		FROM ${tableParams.dynamic_dbname}.`hk_device_alarm_gz` g 
+		WHERE g.`alarm_mac` = d.`mac` AND g.`alarm_typename` = '设备离线报警')
+	</update>
+	
+	<select id="selectDeviceIdOnMac" resultType="com.hotcomm.community.common.bean.db.parse.DeviceSendMsg">
+		SELECT d.id , u.real_name ownName , u.telephone ownPhone
+		FROM ${tableParams.dynamic_dbname}.`hk_device` d
+		LEFT JOIN ${tableParams.base_dbname}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		WHERE d.is_enble = 1 AND d.mac = #{mac}
+	</select>
+	
+</mapper>

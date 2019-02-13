@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.parse.mapper.ParseMapper">
+	<select id="selectCommunity" resultType="com.hotcomm.community.common.bean.db.parse.SelectCommunityDM">
+		SELECT `c_id` cId
+		FROM `hk_community_device`
+		WHERE `device_code` = #{mac}
+	</select>
+
+	<update id="updateDeviceTime">
+		UPDATE ${dataBaseName}.`hk_device` SET `lastdata_time` = NOW()
+		<if test="battery != null">
+			, battery = ${battery}
+		</if>
+		 WHERE `mac` = #{mac}
+	</update>
+	
+	<select id="selectAlarmGz" resultType="com.hotcomm.community.common.bean.db.parse.AlarmGz">
+		SELECT id , `alarm_vaule` alarmVaule, `is_open` isOpen, inner_userid innerUserid, inform_userid informUserid
+		FROM ${dataBaseName}.`hk_device_alarm_gz`
+		WHERE `alarm_mac` = #{mac}  AND `alarm_typename` = #{alarmName}
+	</select>
+	
+	<select id="selectCommunityName" resultType="com.hotcomm.community.common.bean.db.parse.SelectCommunityDM">
+		SELECT id cId, database_no dataBaseNo
+		FROM `hk_community`
+		WHERE id = ${communityid}
+	</select>
+	
+	<select id="selectDeviceId" resultType="com.hotcomm.community.common.bean.db.parse.DeviceSendMsg">
+		SELECT d.id , u.real_name ownName , u.telephone ownPhone
+		FROM ${dataBaseName}.`hk_device` d
+		LEFT JOIN ${baseDbName}.`hk_sys_user` u ON u.`user_id` = d.`own_id`
+		WHERE d.is_enble = 1 AND d.mac = #{mac}
+	</select>
+</mapper>

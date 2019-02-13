@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.accesscontrol.mapper.DevDoorMapper">
+	<select id="pageData" resultType="com.hotcomm.community.common.bean.ui.device.doorcontrol.DevDoorsUM">
+		SELECT 
+		  d.`id`,
+		  d.`mac`,
+		  d.`dev_num` devNum,
+		  IF(dc.`local_type`=0,'单元机','围墙机') localType,
+		  CASE
+		    WHEN d.`use_type` = 0 
+		    THEN '通行' 
+		    WHEN d.`use_type` = 1 
+		    THEN '消防' 
+		    WHEN d.`use_type` = 2 
+		    THEN '监控' 
+		    WHEN d.`use_type` = 3 
+		    THEN '其他' END useType,
+		    CONCAT(b.`building_name`,IFNULL(u.`unit_name`,'') ,IFNULL(f.`floor_name`,''),IFNULL(d.`dev_address`,'')) devAddress,
+		    d.`lat`,
+		    d.`lon`,
+		    d.`x`,
+		    d.`y`,
+		    d.`own_id` ownId,
+		    u.`real_name` `owner`,
+		    IF(dc.`install_state`=0,'未安装','已安装') installState,
+		    d.`install_time` installTime,
+		    CASE
+		    WHEN d.`state` = 0 
+		    THEN '正常' 
+		    WHEN d.`state` = 1 
+		    THEN '离线' 
+		    WHEN d.`state` = 2 
+		    THEN '故障' 
+		    WHEN d.`state` = 3 
+		    THEN '报警' END state,
+		    JSON_LENGTH(d.`video_list`->'$.video') videoSize
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device d 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_door_control_attribute dc 
+		    ON d.`doorcontrol_attr_id` = dc.`id` 
+		    AND dc.`isdelete` = 0 
+		  LEFT JOIN ${tableParams.base_dbname}.`hk_sys_user` u ON d.`own_id`=u.`user_id` AND u.`is_delete`=1
+		  LEFT JOIN ${tableParams.dynamic_dbname}.`hk_building` b ON b.id =d.`building_num`
+		  LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` u ON u.id =d.`unit_num`
+		  LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` f ON f.id =d.`floor_num`
+		WHERE d.`module_id` = #{params.moduleId} 
+		  AND d.`is_enble` = 1 
+		  <if test="params.devNum!=null and params.devNum!=''">
+		  	AND CONCAT_WS(',',d.`dev_num`,d.`mac`) LIKE CONCAT('%',#{params.devNum},'%') 
+		  </if>
+		  <if test="params.ownId!=null and params.ownId!=''">
+		  	AND d.`own_id`=#{params.ownId}
+		  </if>
+		  <if test="params.state!=null and params.state!=''">
+		  	AND d.`state`=#{params.state}
+		  </if>
+		  <if test="params.startTime!=null and params.startTime!=''">
+		  	AND DATE(d.`install_time`) &gt;= DATE(#{params.startTime}) 
+		  </if>
+		  <if test="params.endTime!=null and params.endTime!=''">
+		  	AND DATE(d.`install_time`) &lt;= DATE(#{params.endTime}) 
+		  </if>
+	</select>
+	<select id="selectAttr" resultType="com.hotcomm.community.common.bean.ui.device.doorcontrol.DevAttrUM">
+		SELECT 
+		  d.`dev_type` devType,
+		  IF(d.`state`=0,'正常','离线') state,
+		  IF(dc.`local_type`=0,'单元机','围墙机') localType,
+		  d.`dev_trademark` devTrademark,
+		  d.`dev_num` devNum,
+		  d.`mac` mac,
+		  IF(dc.`faceCaptureOnOff`=1,'开启','未开启') faceCaptureOnOff,
+		  IF(dc.`isDoorLock`=0,'未开启','开启') isDoorLock,
+		  IF(dc.`faceDetectSupport`=1,'支持','不支持') faceDetectSupport,
+		  IF(dc.`faceOpenDoorOnOff`=1,'开启','未开启') faceOpenDoorOnOff
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device d 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_door_control_attribute dc ON d.`doorcontrol_attr_id` = dc.`id` AND dc.`isdelete` = 0 
+		WHERE dc.`guid` =#{tableParams.mac}
+		AND d.`is_enble`=1
+	</select>
+	<select id="detailsData" resultType="com.hotcomm.community.common.bean.ui.device.doorcontrol.DevDoorDetailsUM">
+		SELECT 
+		  d.`dev_type` devType,
+		  IF(d.`state`=0,'正常','离线') state,
+		  IF(dc.`local_type`=0,'单元机','围墙机') localType,
+		  d.`dev_trademark` devTrademark,
+		  d.`dev_num` devNum,
+		  d.`mac` mac,
+		  IF(dc.`faceCaptureOnOff`=1,'开启','未开启') faceCaptureOnOff,
+		  IF(dc.`isDoorLock`=0,'未开启','开启') isDoorLock,
+		  IF(dc.`faceDetectSupport`=1,'支持','不支持') faceDetectSupport,
+		  IF(dc.`faceOpenDoorOnOff`=1,'开启','未开启') faceOpenDoorOnOff,
+		  d.`building_num` buildingNum,
+		  d.`unit_num` unitNum,
+		  d.`floor_num` floorNum,
+		  d.`dev_address` devAddress,
+		  CONCAT(b.`building_name`,IFNULL(n.`unit_name`,'') ,IFNULL(f.`floor_name`,''),IFNULL(d.`dev_address`,'')) devFullAddress,
+		  d.`lat` lat,
+		  d.`lon` lon,
+		  d.`x` `x`,
+		  d.`y` `y`,
+		  d.`use_type` useType,
+		  d.`picture_list`->'$.picture' pictureList,
+		  d.`install_explain` installExplain,
+		  d.`own_id` ownId,
+		  u.`real_name` ownName,
+		  u.`telephone` ownPhone,
+		  d.`install_userid` installUserid,
+		  s.`real_name` installName,
+		  s.`telephone` installPhone,
+		  d.`install_time` installTime,
+		  d.`video_list`->'$.video' videoList
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_device d 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_door_control_attribute dc ON d.`doorcontrol_attr_id` = dc.`id` AND d.`mac`=dc.`guid` AND dc.`isdelete` = 0 
+		  LEFT JOIN ${tableParams.base_dbname}.hk_sys_user u ON u.user_id=d.own_id  AND u.is_delete=1
+		  LEFT JOIN ${tableParams.base_dbname}.hk_sys_user s ON s.user_id=d.install_userid AND u.is_delete=1
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b ON b.id=d.building_num AND b.isdelete=0
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_unit n ON n.id=d.unit_num AND n.isdelete=0
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors f ON f.id=d.floor_num AND n.isdelete=0
+		WHERE dc.`guid` =#{tableParams.mac}
+		AND d.`is_enble`=1
+	</select>
+	<update id="updateData">
+		UPDATE 
+		  ${tableParams.dynamic_dbname}.hk_device d,
+		  ${tableParams.dynamic_dbname}.hk_door_control_attribute dc
+		SET
+		<if test="params.buildingNum!=null and params.buildingNum!=''">
+			d.`building_num` =#{params.buildingNum},
+		</if>
+			d.`unit_num` =#{params.unitNum},
+			d.`floor_num` =#{params.floorNum},
+			d.`dev_address` =#{params.devAddress},
+		<if test="params.lat!=null and params.lat!=''">
+			d.`lat` =#{params.lat},
+		</if>
+		<if test="params.lon!=null and params.lon!=''">
+			d.`lon` =#{params.lon},
+		</if>
+		<if test="params.x!=null and params.x!=''">
+			d.`x` =#{params.x},
+		</if>
+		<if test="params.y!=null and params.y!=''">
+			d.`y` =#{params.y},
+		</if>
+		<if test="params.useType!=null and params.useType!=''">
+			d.`use_type` =#{params.useType},
+		</if>
+		<if test="params.pictureList!=null and params.pictureList!=''">
+			d.`picture_list` =#{params.pictureList},
+		</if>
+		<if test="params.installExplain!=null and params.installExplain!=''">
+			d.`install_explain` =#{params.installExplain},
+		</if>
+		<if test="params.ownId!=null and params.ownId!=''">
+			d.`own_id` =#{params.ownId},
+		</if>
+		<if test="params.installUserid!=null and params.installUserid!=''">
+			d.`install_userid` =#{params.installUserid},
+		</if>
+		<if test="params.videoList!=null and params.videoList!=''">
+			d.`video_list` = #{params.videoList},
+		</if>
+		<if test="params.installState!=null and params.installState!=''">
+			dc.`install_state`=#{params.installState} ,
+		</if>
+		  d.`install_time`=NOW(),
+		  dc.`update_time`=NOW()
+		WHERE d.`mac` =#{params.mac}
+		AND dc.`guid`=#{params.mac}
+	</update>
+</mapper>

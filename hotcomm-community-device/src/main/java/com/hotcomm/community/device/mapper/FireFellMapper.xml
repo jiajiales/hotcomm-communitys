@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.device.mapper.FireFellMapper">
+
+	<select id="DeviceMsgCount" resultType="java.lang.String">
+		SELECT `video_list`
+		FROM ${tableParams.dynamic_dbname}.`hk_device`
+		WHERE use_type = 1 AND is_enble = 1 AND `video_list` IS NOT NULL
+	</select>
+	
+	<select id="FireAlarmMsg" resultType="com.hotcomm.community.common.bean.ui.device.fell.FireAlarmMsgUM">
+		SELECT s.`state_name` stateName, COUNT(a.id) alarmNum
+		FROM ${tableParams.base_dbname}.`hk_alarm_state` s
+		RIGHT JOIN ${tableParams.base_dbname}.`hk_device_type` t ON t.`use_id` = 1 AND t.`alarm_id` = s.`id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`use_type` = t.`use_id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.alarm_type = 1 
+					AND a.`alarm_source` = d.`mac` AND a.`alarm_source_type` = t.`alarm_id` 
+					<!-- 当天 -->
+					<if test="time=='d'.toString()">AND DATE_FORMAT(a.`create_time`,'%Y-%m-%d') = DATE_FORMAT(NOW(),'%Y-%m-%d')</if>
+					<!-- 当月 -->
+					<if test="time=='m'.toString()">AND DATE_FORMAT(a.`create_time`,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')</if>
+		WHERE s.`is_delete` = 0 
+		GROUP BY s.`state_name`
+	</select>
+	
+	<select id="FireDeviceAlarmMsg" resultType="com.hotcomm.community.common.bean.ui.device.fell.FireAlarmMsgUM">
+		SELECT m.`module_name` stateName, COUNT(a.id) alarmNum
+		FROM ${tableParams.base_dbname}.`hk_device_module` m
+		LEFT JOIN ${tableParams.base_dbname}.`hk_alarm_state` s ON s.`module_id` = m.`id`
+		LEFT JOIN ${tableParams.base_dbname}.`hk_device_type` t ON t.`use_id` = 1 AND t.`alarm_id` = s.`id`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_device` d ON d.`use_type` = t.`use_id` AND d.`module_id` = m.id
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_alarm` a ON a.alarm_type = 1 
+					AND a.`module_id` = m.id AND a.`alarm_source` = d.`mac` AND a.`alarm_source_type` = t.`alarm_id`
+					<!-- 当月 -->
+					<if test="time=='m'.toString()">AND DATE_FORMAT(a.`create_time`,'%Y-%m') = DATE_FORMAT(NOW(),'%Y-%m')</if>
+		WHERE m.`is_enble` = 1
+		GROUP BY m.`id`
+	</select>
+
+	<select id="FireDeviceMapOnVideo" resultType="com.hotcomm.community.common.bean.ui.device.fell.DeviceMapUM">
+		SELECT d.id,d.lat,d.lon
+		, d.dev_type devType , d.dev_num devNum , d.mac mac , d.install_time installTime, 
+		CONCAT(IFNULL(hb.`building_name`,''),IFNULL(hu.`unit_name`,''),IFNULL(hf.`floor_name`,''),IFNULL(d.`dev_address`,'')) devAddress
+		FROM  ${tableParams.dynamic_dbname}.`hk_device_video` d
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_building` hb ON hb.id = d.`building_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_unit` hu ON hu.id = d.`unit_num`
+		LEFT JOIN ${tableParams.dynamic_dbname}.`hk_floors` hf ON hf.id = d.`floor_num`
+		WHERE d.`is_enble` = 1 AND d.`mac` IN 
+			<foreach collection="list" index="index" item="item" open="("
+				separator="," close=")">
+				#{item}
+			</foreach>
+	</select>
+
+</mapper>

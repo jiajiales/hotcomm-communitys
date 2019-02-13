@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.person.mapper.PersonAlarmMapper">
+
+	<select id="PersonAlarmPage" resultType="PopulationAlarmDM">
+		SELECT 
+			alarm.`id` id,
+			person.`p_id` pId,
+			person.`name` name,
+			person.`phone` phone,
+			alarm.`alarm_reason` alarmReason,
+			alarm.`alarm_level` alarmLevel,
+			alarm.`create_time` createTime,
+			alarm.`record_address` recordAddress,
+			lable.`name` lableName,
+			alarm.`record_type` recordType,
+			alarm.`imgs` imgs,
+			alarm.`video` video,
+			alarm.`alarm_reason` alarmResaon
+		FROM 
+			${tableParams.dynamic_dbname}.hk_population_alarm alarm 
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person person ON person.`p_id`=alarm.`p_id` AND person.`isdelete`=0
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=alarm.`lable_id`
+		<where>
+			alarm.`isdelete`=0
+            <if test="tableParams.pId !=null">
+                AND alarm.`p_id`=#{tableParams.pId}
+            </if>
+			<if test="tableParams.recordType !=null">
+				AND alarm.`record_type`=#{tableParams.recordType}
+			</if>
+			<if test="tableParams.alarmLv !=null">
+				AND alarm.`alarm_level`=#{tableParams.alarmLv}
+			</if>
+			<if test="tableParams.lableId != null">
+				AND alarm.`lable_id`=#{tableParams.lableId}
+			</if>
+			<if test="tableParams.startTime !=null and tableParams.startTime !=''">
+				AND alarm.`create_time`&gt;=#{tableParams.startTime}
+			</if>
+			<if test="tableParams.endTime !=null and tableParams.endTime !=''">
+				AND DATE_FORMAT(alarm.`create_time`,'%Y-%m-%d')&lt;=#{tableParams.endTime}
+			</if>
+			<if test="tableParams.content !=null and tableParams.content !=''">
+				AND CONCAT_WS('/',person.`name`,person.`phone`,person.`card_no`,alarm.`alarm_reason`) 
+					LIKE
+					CONCAT('%',#{tableParams.content},'%')
+			</if>
+		</where>
+		ORDER BY 
+			alarm.`create_time` DESC
+	</select>
+	
+	<select id="PersonAlarmInfo" resultType="PersonAlarmInfoDM">
+		SELECT 
+			person.`headImg` headImg,
+			person.`name` name,
+			person.`sex` sex,
+			person.`age` age,
+			person.`phone` phone ,
+			person.`card_no` cardNo,
+			alarm.`alarm_level` alarmLevel,
+			alarm.`create_time` createTime,
+			alarm.`record_address` recordAddress,
+			lable.`name` lableName,
+			alarm.`record_type` recordType,
+			alarm.`video` video,
+			alarm.`imgs` imgs
+		FROM 
+			${tableParams.dynamic_dbname}.hk_population_alarm alarm
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person person ON person.`p_id`=alarm.`p_id` AND person.`isdelete`=0
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=alarm.`lable_id`
+		WHERE 
+			alarm.`isdelete`=0 AND alarm.id=#{id}
+	</select>
+	<insert id="addPersonAlarm">
+		INSERT INTO 
+			${tableParams.dynamic_dbname}.`hk_population_alarm` (
+			`create_time`,
+			<if test="address !=''">
+			`record_address`,
+			</if>
+			`alarm_level`,
+			`lable_id`,
+			<if test="img !=''">
+			`imgs`,
+			</if>
+			<if test="video !=''">
+			`video`,
+			</if>
+			<if test="doorduLogId !=''">
+			`doordu_log_id`,
+			</if>
+			<if test="faceNo !=''">
+			`face_no`,
+			</if>
+			<if test="type !=0">
+			`record_type`,
+			</if>
+			`p_id`,
+			`alarm_reason`,
+			`alarm_reason_way`) 
+		VALUES (#{time},
+		<if test="address !=''">
+			#{address},
+		</if>
+		#{alarmLv},#{lableId},
+		<if test="img !=''">
+			#{img},
+		</if>
+		<if test="video !=''">
+			#{video},
+		</if>
+		<if test="doorduLogId !=''">
+			#{doorduLogId},
+		</if>
+		<if test="faceNo !=''">
+			#{faceNo},
+		</if>
+		<if test="type !=0">
+			#{type},
+		</if>
+		#{pId},#{reason},#{way});
+	</insert>
+	<select id="selectLastAlarmTime" resultType="String">
+		SELECT 
+			alarm.`create_time`
+		FROM 
+			${tableParams.dynamic_dbname}.hk_population_alarm alarm
+		WHERE 
+				alarm.`isdelete`=0 
+			AND alarm.`p_id`=#{pId}
+			AND alarm.`create_time`&gt;=#{beginTime} 
+			AND alarm.`create_time`&lt;=#{endTime}
+			AND alarm.`alarm_reason_way`=#{way}
+		ORDER BY alarm.`create_time` DESC
+		LIMIT 1
+	</select>
+	<select id="getAlarmLast50" resultType="PersonLast50AlarmUM">
+		SELECT
+		    alarm.id alarmId,
+			alarm.imgs Imgs,
+			person.p_id pId,
+			person.p_no pNo,
+			person.`name` Name,
+			alarm.record_address address,
+			alarm.alarm_level level,
+			alarm.alarm_reason reason
+		FROM
+			${tableParams.dynamic_dbname}.hk_population_alarm alarm
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_person person ON person.p_id = alarm.p_id 
+			AND person.isdelete = 0 
+		WHERE
+			alarm.isdelete = 0 
+			<if test="type==1">
+				AND alarm.record_type IN ( 1, 2 )
+			</if>
+            <if test="type==2">
+                AND alarm.record_type !=1
+            </if>
+		ORDER BY 
+			alarm.create_time DESC
+		LIMIT 50
+	</select>
+	<select id="getAlarmLastWeekNum" resultType="int">
+		SELECT
+			IFNULL(COUNT(alarm.id),0) Sum
+		FROM
+			${tableParams.dynamic_dbname}.hk_population_alarm alarm
+		WHERE
+			alarm.isdelete = 0 
+			<if test="type==1">
+				AND alarm.record_type IN ( 1, 2 )
+			</if>
+			<if test="type==2">
+				AND alarm.record_type !=1
+			</if>
+			AND YEARWEEK(alarm.create_time)= YEARWEEK(NOW())
+		ORDER BY 
+			alarm.create_time DESC
+	</select>
+</mapper>

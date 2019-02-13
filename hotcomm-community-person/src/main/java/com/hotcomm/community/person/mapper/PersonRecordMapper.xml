@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.person.mapper.PersonRecordMapper">
+	<select id="PersonRecordPage" resultType="PersonRecordDM">
+		SELECT 
+			record.`uid` uid,
+			person.`name` name,
+			person.`p_id` pId,
+			person.`phone` phone,
+			person.`card_no` cardNo,
+			record.`record_time` recordTime,
+			record.`record_address` recordAddress,
+			lable.`name` lableName,
+			record.`record_type` recordType,
+			record.`imgs` imgs,
+			record.`video` video,
+			record.`face_no` faceNo,
+			record.`device_code` deviceMac
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_record record 
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person person ON person.`p_id` = record.`p_id` AND person.`isdelete`=0
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=record.`lable_id`
+		<where> 
+			record.`isdelete`=0 
+			<if test="tableParams.recordType!=null">
+				AND record.`record_type`=#{tableParams.recordType}
+			</if>
+			<if test="tableParams.lableId !=null">
+				AND record.`lable_id`=#{tableParams.lableId}
+			</if>
+			<if test="tableParams.startTime !=null and tableParams.startTime !=''">
+				AND record.`record_time`&gt;=#{tableParams.startTime}
+			</if>
+			<if test="tableParams.endTime !=null and tableParams.endTime !=''">
+				AND DATE_FORMAT(record.`record_time`,'%Y-%m-%d')&lt;=#{tableParams.endTime}
+			</if>
+			<if test="tableParams.content !=null and tableParams.content !=''">
+				AND CONCAT_WS('/',person.`name`,person.`phone`,person.`card_no`) 
+					LIKE
+					CONCAT('%',#{tableParams.content},'%')
+			</if>
+			<if test="tableParams.pId !=null">
+				AND record.p_id=#{tableParams.pId}
+			</if>
+            <if test="tableParams.faceNo !=null and tableParams.faceNo !=''">
+                AND record.face_no=#{tableParams.faceNo}
+            </if>
+		</where>
+		 order by  record.`record_time` desc
+	</select>
+	
+	<select id="PersonRecordInfo" resultType="PersonRecordInfoDM">
+		SELECT 
+			record.`uid` uid,
+			person.`headImg` headImg,
+			person.`name` name,
+			person.`sex` sex,
+			person.`age` age,
+			person.`phone` phone,
+			person.`card_no` cardNo,
+			record.`record_time` recordTime,
+			record.`record_address` recordAddress,
+			lable.`name` lableName,
+			record.`record_type` recordType,
+			record.`imgs` imgs,
+			record.`video` video
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_record record
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person person ON person.`p_id`=record.`p_id` AND person.`isdelete`=0
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=record.`lable_id`
+		WHERE
+			record.`isdelete`=0
+			AND record.`uid`=#{id}
+	</select>
+	<select id="getPersonRecordByPId" resultType="PersonRecordDM">
+		SELECT 
+			record.`uid` uid,
+			record.`record_time` recordTime,
+			record.`record_address` recordAddress,
+			lable.`name` lableName,
+			record.`record_type` recordType,
+			record.`imgs` imgs,
+			record.`lable_id` lableId,
+			record.`face_no` faceNo,
+			record.`doordu_log_id` doorduLogId,
+			record.`video` video,
+			record.`device_code` deviceMac
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_record record
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=record.`lable_id`
+		<where>
+			record.p_id=#{pId} 
+			<if test="beginTime !=null and beginTime !='' and endTime!=null and endTime !=''">
+				AND record.`record_time`&gt;=#{beginTime} AND record.`record_time`&lt;=#{endTime}
+			</if> 
+		</where>
+		ORDER BY 
+			record.`record_time` DESC
+			LIMIT 1
+	</select>
+	<select id="selectRecordNum" resultType="RecordNumDM">
+		SELECT 
+			record.`p_id` pId,
+			DATE_FORMAT(record.`record_time`,'%Y-%m-%d') `time`,
+			COUNT(record.`p_id`) nums
+		FROM 
+			${tableParams.dynamic_dbname}.`hk_person_record` record
+		WHERE 
+			record.`record_time` &gt;=#{beginTime} AND record.`record_time` &lt;=#{endTime} AND record.`p_id`=#{pId}
+		GROUP BY record.`p_id`,DATE_FORMAT(record.`record_time`,'%Y-%m-%d')
+		ORDER BY `time` desc
+	</select>
+	<select id="getRecordLast50" resultType="PersonLast50RecordUM">
+		SELECT
+		    record.uid recordId,
+			record. Imgs,
+			person.p_id pId,
+			person.p_no pNo,
+			person.`name` pName,
+			record.record_address address,
+			record.record_type recordType,
+			record.record_time recordTime,
+			lable.id lableId,
+			lable.type_code lableType,
+			lable.`name` lableName 
+		FROM
+			${tableParams.dynamic_dbname}.hk_person_record record
+			LEFT JOIN ${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.id = record.lable_id
+			LEFT JOIN ${tableParams.dynamic_dbname}.hk_person person ON person.p_id = record.p_id 
+			AND person.isdelete = 0 
+		WHERE
+			record.isdelete = 0 
+			<if test="type==1">
+				AND record.record_type IN ( 1, 2 )
+			</if>
+			<if test="type==2">
+				AND record.record_type !=1
+			</if>
+		ORDER BY
+			record.record_time DESC
+		LIMIT 50
+	</select>
+	<select id="getRecordLast5Img" resultType="String">
+		SELECT
+			record.imgs img
+		FROM
+			${tableParams.dynamic_dbname}.hk_person_record record
+		ORDER BY
+			record.record_time DESC
+		LIMIT 5
+	</select>
+	<insert id="addRecord">
+		INSERT INTO 
+			${tableParams.dynamic_dbname}.`hk_person_record` 
+			(  `p_id`, `record_time`, `record_address`, `lable_id`, `imgs`, `video`, `face_no`, `record_type`, `device_code`, `isdelete` )
+		VALUES
+			(  #{pId}, #{recordTime}, #{recordAddress}, #{lableId}, #{imgs}, #{video}, #{faceNo}, #{recordType}, #{deviceCode}, 0 )
+	</insert>
+	<select id="getRecordByToday" resultType="int">
+		SELECT
+			COUNT(record.uid)
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_record record
+		WHERE
+			DATE_FORMAT(record.record_time,'%Y-%m-%d')=DATE_FORMAT(NOW(),'%Y-%m-%d')
+			AND record.isdelete=0
+			AND record.p_id=#{pId}
+	</select>
+	<select id="getRecordByTodayByNo" resultType="int">
+		SELECT
+			COUNT(record.uid)
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_record record
+		WHERE
+			DATE_FORMAT(record.record_time,'%Y-%m-%d')=DATE_FORMAT(NOW(),'%Y-%m-%d')
+			AND record.isdelete=0
+			AND record.face_no=#{faceNo}
+	</select>
+    <select id="getDeviceMacByRecord" resultType="DeviceMacByRecord">
+        SELECT
+             a.record_time `time`,
+             a.device_code mac
+        FROM
+            (
+            SELECT
+                record.device_code,record.record_time
+            FROM
+                ${tableParams.dynamic_dbname}.`hk_person_record` record
+            WHERE
+              <if test="pId!=null">
+                record.p_id=#{pId}
+              </if>
+              <if test="faceNo!=null and faceNo!=''">
+                record.face_no=#{faceNo}
+              </if>
+              and record.record_time between DATE_SUB(NOW(),INTERVAL 1 MONTH) and NOW()
+              AND record.isdelete=0
+            ORDER BY
+                record.record_time desc
+            )a
+        GROUP BY
+            a.device_code
+    </select>
+</mapper>

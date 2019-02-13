@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.WorkerMapper">
+
+	<insert id="addWorker" parameterType="com.hotcomm.community.common.bean.db.system.WorkerDM">
+		<selectKey keyProperty="workerId" order="AFTER" resultType="java.lang.Integer">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+		INSERT INTO hk_sys_user(user_name, password, email, real_name, telephone, create_time, update_time, create_user, user_type, remark) 
+		VALUES(#{userName}, #{password}, #{email}, #{realName}, #{telephone}, #{createTime}, #{updateTime}, #{createUser}, #{userType}, #{remark})
+	</insert>
+
+	<update id="delWorker" parameterType="com.hotcomm.community.common.bean.db.system.WorkerDM">
+		UPDATE hk_sys_user
+		SET user_name = CONCAT(user_name, '@DEL', user_id), status = #{status}, is_delete = #{isDelete}, update_time = #{updateTime}
+		WHERE user_id = #{workerId}
+	</update>
+
+	<update id="updateWorker" parameterType="com.hotcomm.community.common.bean.db.system.WorkerDM">
+		UPDATE hk_sys_user SET user_name = #{userName}, status = #{status}, email = #{email}, 
+			real_name = #{realName}, telephone = #{telephone}, remark = #{remark}, update_time = #{updateTime}
+		WHERE user_id = #{workerId}
+	</update>
+
+	<select id="getWorker" parameterType="java.lang.Integer" resultType="com.hotcomm.community.common.bean.ui.system.WorkerUM">
+		SELECT v1.user_id workerId, v1.user_name userName, v1.status, v1.email, v1.real_name realName, v1.telephone, v1.remark, v2.role_id roleId, v3.community_id cid
+		FROM hk_sys_user v1 
+		LEFT JOIN hk_sys_user_role v2 ON v1.user_id = v2.user_id
+		LEFT JOIN hk_community_user v3 ON v1.user_id = v3.user_id
+		WHERE v1.user_id = #{workerId}
+	</select>
+
+	<select id="queryListWorker" parameterType="java.lang.Integer" resultType="com.hotcomm.community.common.bean.ui.system.WorkerListUM">
+		SELECT v1.user_id workerId, v1.user_name userName FROM hk_sys_user v1
+		<where>
+			v1.user_type = 2 AND v1.status = 1 AND v1.is_delete = 1
+			<if test="cid != null">
+				AND v1.user_id IN (SELECT v2.user_id FROM hk_community_user v2 WHERE v2.community_id = #{cid})
+			</if>
+		</where>
+	</select>
+
+	<sql id="workerQuery">
+		<where>
+			AND v1.user_id IN (SELECT v2.user_id FROM hk_community_user v2 WHERE v2.community_id = #{params.cid})
+			<if test="params.userName != null and params.userName != ''">
+				AND v1.user_name LIKE CONCAT('%', #{params.userName}, '%') 
+			</if>
+			<if test="params.status != null">
+				AND v1.status = #{params.status} 
+			</if>
+			AND v1.user_type = 2 AND v1.is_delete = 1
+		</where>
+	</sql>
+
+	<select id="queryPageWorker" resultType="com.hotcomm.community.common.bean.ui.system.WorkerUM">
+		SELECT v1.user_id workerId, v1.user_name userName, v1.status, v1.email, v1.real_name realName, v3.role_name roleName, 
+			v1.telephone, v1.remark, v1.create_user createUser, v1.create_time createTime, v1.update_time updateTime
+		FROM hk_sys_user v1
+		LEFT JOIN hk_sys_user_role v2 ON v2.user_id = v1.user_id
+		LEFT JOIN hk_sys_role v3 ON v3.id = v2.role_id
+		<include refid="workerQuery"/>
+		ORDER BY v1.create_time DESC
+	    LIMIT #{params.startIndex}, #{params.endIndex}
+	</select>
+
+	<select id="queryPageWorkerCount" resultType="java.lang.Long">
+		SELECT COUNT(0) FROM hk_sys_user v1
+		<include refid="workerQuery"/>
+	</select>
+
+	<select id="isUserNameUsed" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_user WHERE user_name = #{userName}
+	</select>
+
+	<select id="isEmailUsed" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_user WHERE email = #{email}
+	</select>
+
+	<select id="isTelephoneUsed" parameterType="java.lang.String" resultType="java.lang.Integer">
+		SELECT 1 FROM hk_sys_user WHERE telephone = #{telephone}
+	</select>
+
+</mapper>

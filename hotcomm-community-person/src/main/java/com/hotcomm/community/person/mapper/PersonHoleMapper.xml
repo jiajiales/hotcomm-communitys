@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.person.mapper.PersonHoleMapper">
+	<select id="PersonHolePage" resultType="PersonHoleDM">
+		SELECT 
+			hole.`id` holeId,
+			hole.`hole_type` holeType,
+			hole.`hole_title` holeTitle,
+			hole.`hole_populations` holeObj,
+			hole.`alarm_level` alarmLv,
+			hole.`create_time` createTime,
+			sysuser.`real_name`  createUser,
+			MIN(detail.`beginTime`) beginTime,
+			MAX(detail.`endTime`) endTime,
+			hole.`hole_populations`-&gt;"$.p_id" pId,
+			person.`name` pName,
+			lable.id lableId,
+			lable.name lableName,
+			hole.`hole_status` holeStatus
+		FROM
+			${tableParams.dynamic_dbname}.hk_person_hole hole 
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_hole_detail detail ON detail.`hole_id` = hole.`id` 
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person person ON person.`p_id`=hole.`hole_populations`-&gt;"$.p_id"
+		LEFT JOIN
+			${tableParams.base_dbname}.hk_sys_user sysuser ON sysuser.`user_id`=hole.`create_user` AND sysuser.`is_delete`=1
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_lable lable ON lable.`id`=hole.`hole_populations`-&gt;"$.lable_id"
+		<where>
+			<if test="tableParams.startAge !=null and tableParams.startAge!='' and tableParams.endAge!=null and tableParams.endAge!=''">
+			IF( hole.`hole_type`=2,
+				hole.`hole_populations`->"$.age[0]" BETWEEN #{tableParams.startAge} AND #{tableParams.endAge},
+				1=1)
+			</if>
+			<if test="tableParams.type !=null">
+				AND	hole.`hole_type`=#{tableParams.type}
+			</if>
+			<if test="tableParams.sex !=null">
+				AND hole.`hole_populations`-&gt;"$.sex"=#{tableParams.sex}	
+			</if>		
+			<if test="tableParams.lableId !=null">
+				AND hole.`hole_populations`-&gt;"$.lable_id"=#{tableParams.lableId}
+			</if>
+			<if test="tableParams.people !=null and tableParams.people !=''">
+				AND hole.`hole_populations`-&gt;"$.people"=#{tableParams.people}
+			</if>
+			<if test="tableParams.content !=null and tableParams.content !=''">
+				AND CONCAT_WS('/',hole.`hole_title`,person.`name`) 
+					LIKE 
+					CONCAT('%',#{tableParams.content},'%')
+			</if>
+			<if test="tableParams.startTime !=null and tableParams.startTime !='' and tableParams.endTime !=null and tableParams.endTime !=''">
+				AND #{tableParams.startTime}&lt;=beginTime AND endTime&lt;=#{tableParams.endTime}
+			</if>
+		</where>
+		GROUP BY 
+				hole.`id`
+	</select>
+	
+	<select id="selectHoleDetailInfo" resultType="PersonHoleDetailDM">
+		SELECT 
+			detail.`id` id,
+			detail.`hole_id` holeId,
+			detail.`beginTime` begintime,
+			detail.`endTime` endtime,
+			detail.`no_return` noReturn,
+			detail.`no_go` noGo,
+			detail.`days` days,
+			detail.`nums` nums,
+			detail.`row_key` rowKey,
+			detail.`way` way
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_hole_detail detail
+		WHERE 
+			detail.`hole_id`=#{id}
+		
+	</select>
+	
+	<insert id="insertPersonHole">
+		INSERT INTO 
+		${tableParams.dynamic_dbname}.`hk_person_hole` (
+			`hole_title`,
+			`hole_type`,
+			`hole_populations`,
+			`alarm_level`,
+			`hole_status`,
+			`create_time`,
+			`create_user`,
+			`push`
+		)
+		VALUES(
+			#{pa.holeTitle},
+			#{pa.holeType},
+			#{pa.holePopulations},
+			#{pa.alarmLv},
+			<if test="pa.source==0">
+			  1,
+            </if>
+            <if test="pa.source!=0">
+              0,
+            </if>
+			NOW(),
+			#{pa.createUser},
+			#{pa.push}
+		)
+		<selectKey order="AFTER" resultType="java.lang.Integer" keyProperty="pa.id">
+			SELECT LAST_INSERT_ID() AS id
+		</selectKey>
+	</insert>
+	
+	<insert id="insertPersonHoleDetail" keyProperty="id" useGeneratedKeys="true">
+		INSERT INTO 
+		${tableParams.dynamic_dbname}.`hk_person_hole_detail` (
+			`hole_id`,
+			`beginTime`,
+			`endTime`,
+			`no_return`,
+			`no_go`,
+			`days`,
+			`nums`,
+			`row_key`,
+			`way`
+		)
+		VALUES(
+			#{pas.holeId},
+			#{pas.begintime},
+			#{pas.endtime},
+			#{pas.noReturn},
+			#{pas.noGo},
+			#{pas.days},
+			#{pas.nums},
+			#{pas.rowKey},
+			#{pas.way}
+		)
+	</insert>
+	
+		<select id="getHoleAndDetail" resultType="HoleAndDetailInfoDM">
+		SELECT 
+			hole.`id` holeId,
+			hole.`hole_title` holeTitle,
+			hole.`hole_type` holeType,
+			hole.`hole_populations` holePopulations,
+			hole.`alarm_level` alarmLv,
+			hole.`hole_status` holeStatus,
+			hole.`record_population_time` recordTime,
+			hole.`create_time` createTime,
+			hole.`create_user` createUser,
+			hole.`update_time` updateTime,
+			hole.`update_user` updateUser,
+			hole.`push` push,
+			detail.`id` detailId,
+			DATE_FORMAT(detail.`beginTime`,'%Y-%m-%d %h:%m:%d') beginTime,
+			DATE_FORMAT(detail.`endTime`,'%Y-%m-%d %h:%m:%d') endTime,
+			detail.`no_return` noReturn,
+			detail.`no_go` noGo,
+			detail.`days`days,
+			detail.`nums` nums,
+			detail.`row_key` rowKey,
+			detail.`way` way
+		FROM 
+			${tableParams.dynamic_dbname}.hk_person_hole hole
+		LEFT JOIN 
+			${tableParams.dynamic_dbname}.hk_person_hole_detail detail 
+			ON 
+			detail.`hole_id`=hole.`id`
+		WHERE 
+			hole.`hole_status`=1 
+			AND
+			detail.`beginTime`&lt;=#{time}
+			AND 
+			#{time}&lt;=detail.`endTime`
+	</select>
+	<update id="updateHoleDetail">
+		UPDATE 
+			${tableParams.dynamic_dbname}.`hk_person_hole_detail` 
+		SET 
+			<if test="pas.begintime != null and pas.begintime !=''">
+				`beginTime`=#{pas.begintime},
+			</if>
+			<if test="pas.endtime != null and pas.endtime !=''">
+				`endTime`=#{pas.endtime},
+			</if>
+			<if test=" pas.noReturn !=null">
+				`no_return`=#{pas.noReturn},
+			</if>
+			<if test="pas.noGo !=null">
+				`no_go`=#{pas.noGo},
+			</if>
+			<if test="pas.days !=null">
+				`days`=#{pas.days},
+			</if>
+			<if test="pas.nums != null">
+				`nums`=#{pas.nums},
+			</if>
+			<if test="pas.rowKey != null">
+				`row_key`=#{pas.rowKey},
+			</if>
+			<if test="pas.way != null">
+				`way`=#{pas.way}
+			</if>
+		WHERE 
+			`id`=#{pas.id}			
+	</update>
+	<update id="updateHole">
+		UPDATE 
+			${tableParams.dynamic_dbname}.`hk_person_hole` 
+		SET 
+			<if test="pa.push != null and pa.push !=''">
+				`push`=#{pa.push},
+			</if>
+			<if test="pa.holeTitle !=null and pa.holeTitle !=''">
+				`hole_title`=#{pa.holeTitle},
+			</if>
+			<if test="pa.holeType !=null">
+				`hole_type`=#{pa.holeType},
+			</if>
+			<if test="pa.holePopulations !=null and pa.holePopulations != ''">
+				`hole_populations`=#{pa.holePopulations},
+			</if>
+			<if test="pa.alarmLv !=null">
+				`alarm_level`=#{pa.alarmLv},
+			</if>
+			<if test="pa.createUser !=null">
+				`update_user`=#{pa.createUser},
+			</if>
+			`update_time`=NOW()
+		WHERE 
+			`id`=#{pa.id}
+	</update>
+    <update id="updateHolePopulationLableId">
+        UPDATE ${tableParams.dynamic_dbname}.hk_person_hole
+        SET
+            hole_populations=json_set(hole_populations,"$.lable_id",#{lableId})
+        WHERE
+            hole_populations->"$.p_id" = #{pId}
+    </update>
+</mapper>

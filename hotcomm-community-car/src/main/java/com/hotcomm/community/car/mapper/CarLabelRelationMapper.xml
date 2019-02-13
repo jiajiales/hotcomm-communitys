@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.car.mapper.CarLabelRelationMapper">
+
+<select id="detail"  resultType="CarLabelRelationUM">
+		  SELECT 
+		 a.id,
+		 a.car_num carNum,
+		 a.label_id labelId
+		 FROM ${dynamicDbname}.`hk_car_label_relation`  a
+		 WHERE 1=1 
+		 <if test="carNum!=null and carNum !=''">
+		 	 AND a.car_num = #{carNum}
+		 </if>
+		 <if test="labelId !=null">
+		 	AND a.label_id = #{labelId}
+		 </if>
+</select>
+
+    <select id="selectLabelByCarNum"   resultType="java.lang.String">
+		  SELECT 
+		  b.name labelName
+		 FROM ${dynamicDbname}.`hk_car_label_relation`  a
+		 LEFT JOIN ${dynamicDbname}.`hk_car_label`  b ON a.label_id = b.id
+		 WHERE  a.car_num = #{carNum}
+  </select>
+  
+<select id="selectLabelIdByCarNum"   resultType="java.lang.Integer">
+		  SELECT 
+		  b.id 
+		 FROM ${dynamicDbname}.`hk_car_label_relation`  a
+		 LEFT JOIN ${dynamicDbname}.`hk_car_label`  b ON a.label_id = b.id
+		 WHERE  a.car_num = #{carNum}
+  </select>
+
+ <select id ="selectBlackCarByLabelId"     resultType="java.lang.Integer" >
+		SELECT count(1) FROM ${dynamicDbname}.`hk_car_label_relation` 
+        WHERE label_id  in
+        <foreach collection="list" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+ </select>
+ 
+  <select id ="selectTodayBlackCarByLabelId"     resultType="java.lang.Integer" >
+		SELECT count(1) FROM ${dynamicDbname}.`hk_car_label_relation`  a
+		INNER JOIN ${dynamicDbname}.`hk_car_pass_records` b ON a.car_num = b.car_num
+        WHERE a.label_id  in
+        <foreach collection="list" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        <if test="day!=null">
+        	AND DATE_FORMAT(b.create_time, '%Y-%m-%d') =#{day}
+        </if>
+ </select>
+ 
+  <insert id="insert" parameterType="CarLabelRelationDM">
+    insert into ${dynamicDbname}.`hk_car_label_relation` (id, car_num, label_id
+      )
+    values (#{id,jdbcType=INTEGER}, #{carNum,jdbcType=VARCHAR}, #{labelId,jdbcType=INTEGER}
+      )
+  </insert>
+  
+  <insert id="insertBatch"  >
+    INSERT INTO ${dynamicDbname}.`hk_car_label_relation`
+            (car_num,label_id)
+    VALUES
+    <foreach collection ="list"  item="item" separator =",">
+         ( #{item.carNum},#{item.labelId})
+    </foreach >
+</insert>
+
+    <delete id="delete" parameterType="CarLabelRelationDM">
+    delete from ${dynamicDbname}.`hk_car_label_relation`
+    where id = #{id,jdbcType=INTEGER}
+  </delete>
+  
+    <update id="update" parameterType="CarLabelRelationDM">
+    update ${dynamicDbname}.`hk_car_label_relation`
+    set car_num = #{carNum,jdbcType=VARCHAR},
+      label_id = #{labelId,jdbcType=INTEGER}
+    where id = #{id,jdbcType=INTEGER}
+  </update>
+  
+    <delete id="deleteByCarNum" parameterType="CarLabelRelationDM">
+    delete from ${dynamicDbname}.`hk_car_label_relation`
+    where car_num = #{carNum,jdbcType=VARCHAR}
+    <if test="labelId != null">
+    	AND label_id = #{labelId,jdbcType=INTEGER}
+    </if>
+  </delete>
+</mapper>

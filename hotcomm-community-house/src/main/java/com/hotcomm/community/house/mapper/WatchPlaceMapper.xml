@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.house.mapper.WatchPlaceMapper">
+	<select id="page" resultType="WatchPlaceUM">
+		SELECT
+		w.`id` id,
+		b.`id` buildingId,
+		b.`building_name`
+		buildingName,
+		u.`id` unitId,
+		u.`unit_name` unitName,
+		f.`id` floorId,
+		f.`floor_name`
+		floorName,
+		r.`id` roomId,
+		r.`room_name` roomName,
+		w.`place_name` placeName,
+		w.`place_address` placeAddress,
+		w.`place_type` placeType,
+		w.`place_type` placeTypeId,
+		w.`danger_level` dangerLevel,
+		w.`lon` lon,
+		w.`lat` lat,
+		w.`create_user`
+		createUser,
+		w.`create_time` createTime
+		FROM
+		${tableParams.dynamic_dbname}.hk_watch_place w
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON b.`id` = w.`building_id`
+		AND b.`isdelete` = 0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_unit u
+		ON u.`id`=w.`unit_id` 
+		AND u.`isdelete`=0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_floors f
+		ON f.`id` = w.`floor_id`
+		AND f.`isdelete` = 0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r
+		ON
+		r.`id` = w.`room_id`
+		AND r.`isdelete` = 0
+		WHERE w.`isdelete` = 0
+		AND
+		w.`ways` = #{params.ways}
+		<if test="params.placeType!=null and params.placeType!=''">
+			AND w.`place_type`=#{params.placeType}
+		</if>
+		<if test="params.dangerLevel!=null and params.dangerLevel!=''">
+			AND w.`danger_level`=#{params.dangerLevel}
+		</if>
+		<if test="params.content!=null and params.content!=''">
+			AND CONCAT_WS(',',b.`building_name`,u.`unit_name`,f.`floor_name`,r.`room_name`,w.`place_name`) LIKE CONCAT('%',#{params.content},'%')
+		</if>
+		GROUP BY w.`id`
+		ORDER BY w.`create_time` DESC
+	</select>
+	<select id="detailsData" resultType="WatchPlaceUM">
+		SELECT
+		w.`id` id,
+		b.`id` buildingId,
+		b.`building_name` buildingName,
+		u.`id` unitId,
+		u.`unit_name` unitName,
+		f.`id` floorId,
+		f.`floor_name` floorName,
+		r.`id` roomId,
+		r.`room_name`
+		roomName,
+		w.`place_name` placeName,
+		w.`place_address` placeAddress,
+		w.`place_type` placeType,
+		w.`place_type` placeTypeId,
+		w.`danger_level` dangerLevel,
+		w.`lon` lon,
+		w.`lat` lat,
+		w.`create_user` createUser,
+		w.`create_time` createTime
+		FROM
+		${tableParams.dynamic_dbname}.hk_watch_place w
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON b.`id` = w.`building_id`
+		AND b.`isdelete` = 0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_unit u
+		ON u.`id`=w.`unit_id` 
+		AND u.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors
+		f
+		ON f.`id` = w.`floor_id`
+		AND f.`isdelete` = 0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r
+		ON
+		r.`id` = w.`room_id`
+		AND r.`isdelete` = 0
+		WHERE w.`isdelete` = 0
+		AND
+		w.`id` = #{tableParams.id}
+	</select>
+	<select id="isExistPlace" resultType="java.lang.Integer">
+		SELECT
+		COUNT(w.id)
+		FROM
+		${tableParams.dynamic_dbname}.hk_watch_place w
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_building b
+		ON b.`id` =
+		w.`building_id`
+		AND b.`isdelete` = 0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_unit u
+		ON u.`id`=w.`unit_id` 
+		AND u.`isdelete`=0
+		LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors
+		f
+		ON f.`id` =
+		w.`floor_id`
+		AND f.`isdelete` = 0
+		LEFT JOIN
+		${tableParams.dynamic_dbname}.hk_room r
+		ON r.`id` =
+		w.`room_id`
+		AND
+		r.`isdelete` = 0
+		WHERE w.`isdelete` = 0
+		AND
+		w.`place_name`
+		=#{params.placeName}
+		AND
+		w.`building_id`=#{params.buildingId}
+		<if test="params.id!=null and params.id!=''">
+			AND w.`id` != #{params.id}
+		</if>
+		<if test="params.unitId!=null and params.unitId!=''">
+			AND w.`unit_id` =#{params.unitId}
+		</if>
+		<if test="params.floorId!=null and params.floorId!=''">
+			AND w.`floor_id` =#{params.floorId}
+		</if>
+		<if test="params.roomId!=null and params.roomId!=''">
+			AND w.`room_id` =#{params.roomId}
+		</if>
+	</select>
+	<select id="getPlaceList" resultType="WatchPlaceUM">
+		SELECT 
+		  p.`id`,
+		  b.`id` buildingId,
+		  b.`building_name` buildingName,
+		  u.`id` unitId,
+		  u.`unit_name` unitName,
+		  f.`id` floorId,
+		  f.`floor_name` floorName,
+		  r.`id` roomId,
+		  r.`room_name` roomName,
+		  p.`place_name` placeName,
+		  p.`place_address` placeAddress,
+		  p.`place_type` placeType,
+		  p.`danger_level` dangerLevel,
+		  p.`lat`,
+		  p.`lon`,
+		  p.`create_user` createUser,
+		  p.`create_time` createTime 
+		FROM
+		  ${tableParams.dynamic_dbname}.hk_watch_place p 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_building b 
+		    ON b.`id` = p.`building_id` 
+		    AND b.`isdelete` = 0 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_unit u
+			ON u.`id`=p.`unit_id` 
+			AND u.`isdelete`=0
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_floors f 
+		    ON f.`id` = p.`floor_id` 
+		    AND f.`isdelete` = 0 
+		  LEFT JOIN ${tableParams.dynamic_dbname}.hk_room r 
+		    ON r.`id` = p.`room_id` 
+		    AND r.`isdelete` = 0 
+		WHERE p.`isdelete` = 0 
+	</select>
+	<insert id="addData">
+		INSERT INTO
+		${tableParams.dynamic_dbname}.hk_watch_place (
+		building_id,
+		unit_id,
+		floor_id,
+		room_id,
+		ways,
+		place_name,
+		place_address,
+		place_type,
+		danger_level,
+		lon,
+		lat,
+		create_user,
+		create_time
+		)
+		VALUES
+		(#{params.buildingId},#{params.unitId},#{params.floorId},#{params.roomId},#{params.ways},
+		#{params.placeName},#{params.placeAddress},#{params.placeType},#{params.dangerLevel},
+		#{params.lon},#{params.lat},#{params.createUser},NOW())
+	</insert>
+	<update id="updateData">
+		UPDATE
+		${tableParams.dynamic_dbname}.hk_watch_place
+		SET
+		<if test="params.buildingId!=null and params.buildingId!=''">
+			building_id =#{params.buildingId},
+		</if>
+		<if test="params.unitId!=null and params.unitId!=''">
+			unit_id =#{params.unitId},
+		</if>
+		<if test="params.floorId!=null and params.floorId!=''">
+			floor_id =#{params.floorId},
+		</if>
+		<if test="params.roomId!=null and params.roomId!=''">
+			room_id =#{params.roomId},
+		</if>
+		<if test="params.ways!=null and params.ways!=''">
+			ways =#{params.ways},
+		</if>
+		<if test="params.placeName!=null and params.placeName!=''">
+			place_name =#{params.placeName},
+		</if>
+		<if test="params.placeAddress!=null and params.placeAddress!=''">
+			place_address =#{params.placeAddress},
+		</if>
+		<if test="params.placeType!=null and params.placeType!=''">
+			place_type =#{params.placeType},
+		</if>
+		<if test="params.dangerLevel!=null and params.dangerLevel!=''">
+			danger_level =#{params.dangerLevel},
+		</if>
+		<if test="params.lon!=null and params.lon!=''">
+			lon =#{params.lon},
+		</if>
+		<if test="params.lat!=null and params.lat!=''">
+			lat =#{params.lat},
+		</if>
+		update_time = NOW()
+		WHERE id=#{params.id}
+	</update>
+	<update id="delData">
+		UPDATE
+		${tableParams.dynamic_dbname}.hk_watch_place
+		SET isdelete=1
+		WHERE id=#{tableParams.id}
+	</update>
+</mapper>

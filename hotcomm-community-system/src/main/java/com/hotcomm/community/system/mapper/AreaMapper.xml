@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hotcomm.community.system.mapper.AreaMapper">
+
+	<select id="getAreaListByLevel"  resultType="com.hotcomm.community.common.bean.db.system.AreaDM">
+		SELECT id, parent_id parentId, level, area_code areaCode, zip_code zipCode, city_code cityCode, 
+				name, short_name shortName, merger_name mergerName, pinyin, lng, lat
+		FROM hk_area 
+		<trim prefix="WHERE" prefixOverrides="AND|OR">
+			<if test="areaPa.level != null">
+				AND level = #{areaPa.level}
+			</if>
+			<if test="areaPa.parentId != null">
+				AND parent_id = #{areaPa.parentId}
+			</if>
+		</trim>
+	</select>
+	
+</mapper>
